@@ -9,7 +9,7 @@ import { Send, CheckCircle, AlertCircle, ArrowLeft, Info } from "lucide-react";
 import { toast } from "sonner";
 import { ClientData } from "./Upload";
 
-const WEBHOOK_URL = "https://teste.belaformaonline.com/webhook-test/disparo";
+const WEBHOOK_URL = "https://webhook.belaformaonline.com/webhook/disparo";
 
 const Results = () => {
   const navigate = useNavigate();
