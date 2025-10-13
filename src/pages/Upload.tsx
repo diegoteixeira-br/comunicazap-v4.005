@@ -158,10 +158,7 @@ const Upload = () => {
                 onChange={handleFileInput}
                 disabled={isProcessing}
               />
-              <label
-                htmlFor="file-input"
-                className="cursor-pointer flex flex-col items-center gap-4"
-              >
+              <div className="flex flex-col items-center gap-4">
                 <UploadIcon className={`h-16 w-16 ${isDragging ? 'text-primary' : 'text-muted-foreground'}`} />
                 <div>
                   <p className="text-lg font-medium mb-2">
@@ -172,11 +169,16 @@ const Upload = () => {
                   </p>
                 </div>
                 {!isProcessing && (
-                  <Button variant="outline" size="lg" type="button">
+                  <Button 
+                    variant="outline" 
+                    size="lg" 
+                    type="button"
+                    onClick={() => document.getElementById('file-input')?.click()}
+                  >
                     Selecionar Arquivo
                   </Button>
                 )}
-              </label>
+              </div>
             </div>
 
             <div className="mt-8 p-4 bg-muted/50 rounded-lg">
