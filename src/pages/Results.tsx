@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Send, CheckCircle, AlertCircle, ArrowLeft } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Send, CheckCircle, AlertCircle, ArrowLeft, Info } from "lucide-react";
 import { toast } from "sonner";
 import { ClientData } from "./Upload";
 
@@ -14,6 +15,7 @@ const Results = () => {
   const navigate = useNavigate();
   const [clients, setClients] = useState<ClientData[]>([]);
   const [sendingStatus, setSendingStatus] = useState<{ [key: number]: "idle" | "sending" | "success" | "error" }>({});
+  const [customMessage, setCustomMessage] = useState("");
 
   useEffect(() => {
     const storedData = sessionStorage.getItem("clientData");
@@ -35,10 +37,18 @@ const Results = () => {
     }
   }, [navigate]);
 
+  const replaceVariables = (template: string, client: ClientData): string => {
+    return template
+      .replace(/{nome}/g, client["Nome do Cliente"])
+      .replace(/{telefone}/g, client["Telefone do Cliente"]);
+  };
+
   const handleSend = async (client: ClientData, index: number) => {
     setSendingStatus(prev => ({ ...prev, [index]: "sending" }));
 
     try {
+      const processedMessage = customMessage ? replaceVariables(customMessage, client) : "";
+      
       const response = await fetch(WEBHOOK_URL, {
         method: "POST",
         headers: {
@@ -47,6 +57,7 @@ const Results = () => {
         body: JSON.stringify({
           nome: client["Nome do Cliente"],
           telefone: client["Telefone do Cliente"],
+          mensagem: processedMessage,
         }),
       });
 
@@ -107,24 +118,80 @@ const Results = () => {
             <ArrowLeft className="h-4 w-4 mr-2" />
             Voltar
           </Button>
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-4xl font-bold mb-2">Clientes Carregados</h1>
-              <p className="text-muted-foreground">
-                {clients.length} cliente(s) encontrado(s)
-              </p>
-            </div>
-            <Button
-              onClick={handleSendAll}
-              size="lg"
-              variant="hero"
-              disabled={Object.values(sendingStatus).some(s => s === "sending")}
-            >
-              <Send className="h-5 w-5 mr-2" />
-              Enviar para Todos
-            </Button>
-          </div>
+          <h1 className="text-4xl font-bold mb-2">Clientes Carregados</h1>
+          <p className="text-muted-foreground mb-6">
+            {clients.length} cliente(s) encontrado(s)
+          </p>
         </div>
+
+        <Card className="mb-6 shadow-elevated">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Send className="h-5 w-5" />
+              Mensagem Personalizada
+            </CardTitle>
+            <CardDescription>
+              Digite a mensagem que será enviada para cada cliente. Use os códigos para personalizar.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <Textarea
+                placeholder="Olá {nome}, tudo bem? Seu número é {telefone}"
+                value={customMessage}
+                onChange={(e) => setCustomMessage(e.target.value.slice(0, 1000))}
+                className="min-h-[120px] resize-none"
+              />
+              <div className="flex justify-end mt-1">
+                <span className="text-xs text-muted-foreground">
+                  {customMessage.length}/1000
+                </span>
+              </div>
+            </div>
+
+            <Card className="bg-muted/50 border-primary/20">
+              <CardContent className="pt-4">
+                <div className="flex items-start gap-2">
+                  <Info className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
+                  <div className="space-y-2 flex-1">
+                    <p className="text-sm font-medium">Códigos disponíveis:</p>
+                    <div className="flex flex-wrap gap-2">
+                      <Badge 
+                        variant="secondary" 
+                        className="cursor-pointer hover:bg-secondary/80"
+                        onClick={() => setCustomMessage(prev => prev + "{nome}")}
+                      >
+                        {"{nome}"}
+                      </Badge>
+                      <Badge 
+                        variant="secondary"
+                        className="cursor-pointer hover:bg-secondary/80"
+                        onClick={() => setCustomMessage(prev => prev + "{telefone}")}
+                      >
+                        {"{telefone}"}
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Clique nos códigos para adicionar à mensagem
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <div className="flex justify-end">
+              <Button
+                onClick={handleSendAll}
+                size="lg"
+                variant="hero"
+                disabled={Object.values(sendingStatus).some(s => s === "sending")}
+              >
+                <Send className="h-5 w-5 mr-2" />
+                Enviar para Todos
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
 
         {(successCount > 0 || errorCount > 0) && (
           <div className="mb-6 flex gap-4">
