@@ -26,8 +26,23 @@ const ConnectWhatsApp = () => {
   const createInstance = async () => {
     setLoading(true);
     try {
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError) throw sessionError;
+      if (!sessionData.session) {
+        toast({
+          title: "Sessão expirada",
+          description: "Faça login novamente para gerar o QR Code.",
+          variant: "destructive",
+        });
+        navigate('/auth');
+        return;
+      }
+
       const { data, error } = await supabase.functions.invoke('create-whatsapp-instance', {
-        body: {}
+        body: {},
+        headers: {
+          Authorization: `Bearer ${sessionData.session.access_token}`,
+        },
       });
 
       if (error) throw error;
@@ -43,11 +58,16 @@ const ConnectWhatsApp = () => {
         throw new Error(data.error || 'Falha ao gerar QR Code');
       }
     } catch (error: any) {
+      console.error('createInstance error:', error);
+      const msg = /unauthorized/i.test(error?.message || '') ? 'Sessão inválida. Faça login novamente.' : error.message;
       toast({
         title: "Erro",
-        description: error.message,
+        description: msg,
         variant: "destructive",
       });
+      if (/unauthorized/i.test(error?.message || '')) {
+        navigate('/auth');
+      }
     } finally {
       setLoading(false);
     }
@@ -58,8 +78,17 @@ const ConnectWhatsApp = () => {
     setChecking(true);
 
     try {
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError) throw sessionError;
+      if (!sessionData.session) {
+        throw new Error('Unauthorized');
+      }
+
       const { data, error } = await supabase.functions.invoke('check-instance-status', {
-        body: {}
+        body: {},
+        headers: {
+          Authorization: `Bearer ${sessionData.session.access_token}`,
+        },
       });
 
       if (error) throw error;
@@ -77,6 +106,14 @@ const ConnectWhatsApp = () => {
       }
     } catch (error: any) {
       console.error('Status check error:', error);
+      if (/unauthorized/i.test(error?.message || '')) {
+        toast({
+          title: "Sessão expirada",
+          description: "Faça login novamente.",
+          variant: "destructive",
+        });
+        navigate('/auth');
+      }
     } finally {
       setChecking(false);
     }
