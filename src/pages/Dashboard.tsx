@@ -5,7 +5,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { MessageSquare, Upload, History, Phone, Power, Loader2 } from 'lucide-react';
+import { MessageSquare, Upload, History, Phone, Power, Loader2, RefreshCw } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 const Dashboard = () => {
@@ -14,11 +14,34 @@ const Dashboard = () => {
   const [campaigns, setCampaigns] = useState<any[]>([]);
   const [stats, setStats] = useState({ total: 0, sent: 0, failed: 0 });
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     if (user) {
       fetchWhatsAppInstance();
       fetchCampaigns();
+      
+      // Subscribe to realtime changes on whatsapp_instances
+      const channel = supabase
+        .channel('whatsapp-instance-changes')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'whatsapp_instances',
+            filter: `user_id=eq.${user.id}`
+          },
+          (payload) => {
+            console.log('WhatsApp instance updated:', payload);
+            setWhatsappInstance(payload.new);
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
     }
   }, [user]);
 
@@ -27,10 +50,40 @@ const Dashboard = () => {
       .from('whatsapp_instances')
       .select('*')
       .eq('user_id', user?.id)
-      .single();
+      .maybeSingle();
     
     setWhatsappInstance(data);
     setLoading(false);
+  };
+
+  const refreshInstanceStatus = async () => {
+    setRefreshing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('check-instance-status', {
+        body: {}
+      });
+
+      if (error) throw error;
+
+      if (data.success) {
+        setWhatsappInstance(data.instance);
+        toast({
+          title: "Status atualizado",
+          description: data.status === 'connected' 
+            ? `WhatsApp conectado: ${data.phoneNumber}` 
+            : 'WhatsApp desconectado',
+        });
+      }
+    } catch (error: any) {
+      console.error('Refresh error:', error);
+      toast({
+        title: "Erro ao atualizar",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setRefreshing(false);
+    }
   };
 
   const fetchCampaigns = async () => {
@@ -92,9 +145,19 @@ const Dashboard = () => {
                       {whatsappInstance?.phone_number || 'Nenhum número conectado'}
                     </CardDescription>
                   </div>
-                  <Badge variant={whatsappInstance?.status === 'connected' ? 'default' : 'secondary'}>
-                    {whatsappInstance?.status === 'connected' ? '✓ Conectado' : '○ Desconectado'}
-                  </Badge>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={refreshInstanceStatus}
+                      disabled={refreshing}
+                    >
+                      <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+                    </Button>
+                    <Badge variant={whatsappInstance?.status === 'connected' ? 'default' : 'secondary'}>
+                      {whatsappInstance?.status === 'connected' ? '✓ Conectado' : '○ Desconectado'}
+                    </Badge>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent>
