@@ -106,7 +106,7 @@ serve(async (req) => {
           },
           body: JSON.stringify({
             instanceName: instance.instance_name,
-            api_key: instance.api_key || (Deno.env.get('EVOLUTION_API_KEY') ?? ''),
+            api_key: instance.api_key,
             number: client["Telefone do Cliente"],
             text: message.replace('{nome}', client["Nome do Cliente"])
           })

@@ -35,6 +35,10 @@ serve(async (req) => {
       .single();
 
     if (existingInstance && existingInstance.status === 'connected') {
+      // If API key is missing for a connected instance, warn so the user can refresh it later
+      if (!existingInstance.api_key) {
+        console.warn('Connected instance has no API key saved. Consider refreshing the instance token.');
+      }
       return new Response(
         JSON.stringify({ 
           success: true, 
@@ -74,9 +78,17 @@ serve(async (req) => {
     const evolutionData = await createInstanceResponse.json();
     console.log('Evolution API response:', evolutionData);
 
-    // Get instance API key
-    const instanceApiKey = evolutionData.hash?.apikey || evolutionData.apikey;
-    console.log('Instance API key retrieved:', instanceApiKey ? 'Yes' : 'No');
+    // Try to capture the per-instance API key (token) from the create response
+    let instanceApiKey: string | null = (
+      evolutionData?.instance?.apikey ||
+      evolutionData?.instance?.token ||
+      evolutionData?.hash?.apikey ||
+      evolutionData?.hash?.token ||
+      evolutionData?.apikey ||
+      evolutionData?.token ||
+      null
+    );
+    console.log('Instance API key from create:', instanceApiKey ? 'Found' : 'Missing');
 
     const connectResponse = await fetch(`${evolutionApiUrl}/instance/connect/${instanceName}`, {
       method: 'GET',
@@ -88,6 +100,25 @@ serve(async (req) => {
     const connectData = await connectResponse.json();
     console.log('Connect response:', connectData);
 
+    // If still missing, try to extract it from the connect response
+    if (!instanceApiKey) {
+      const candidateFromConnect: string | null = (
+        connectData?.instance?.apikey ||
+        connectData?.instance?.token ||
+        connectData?.hash?.apikey ||
+        connectData?.hash?.token ||
+        connectData?.apikey ||
+        connectData?.token ||
+        null
+      );
+      if (candidateFromConnect) {
+        instanceApiKey = candidateFromConnect;
+        console.log('Instance API key obtained from connect response');
+      } else {
+        console.warn('Instance API key still missing after connect response');
+      }
+    }
+
     const { data: instanceData, error: insertError } = await supabaseClient
       .from('whatsapp_instances')
       .upsert({
@@ -97,7 +128,7 @@ serve(async (req) => {
         status: 'pending',
         qr_code: connectData.qrcode?.base64 || connectData.base64,
         qr_code_updated_at: new Date().toISOString(),
-        api_key: instanceApiKey
+        api_key: instanceApiKey ?? undefined
       }, {
         onConflict: 'user_id'
       })
