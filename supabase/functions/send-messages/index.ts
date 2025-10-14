@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -25,7 +26,21 @@ serve(async (req) => {
       throw new Error('Unauthorized');
     }
 
-    const { clients, message, campaignName } = await req.json();
+    // Input validation schema
+    const clientSchema = z.object({
+      "Nome do Cliente": z.string().trim().min(1, "Client name is required").max(100, "Client name too long"),
+      "Telefone do Cliente": z.string().regex(/^\+?[1-9]\d{1,14}$/, "Invalid phone number format")
+    });
+
+    const requestSchema = z.object({
+      clients: z.array(clientSchema).min(1, "At least one client required").max(1000, "Maximum 1000 clients per campaign"),
+      message: z.string().trim().min(1, "Message is required").max(1000, "Message too long"),
+      campaignName: z.string().trim().max(100, "Campaign name too long").optional()
+    });
+
+    // Validate input
+    const validatedData = requestSchema.parse(await req.json());
+    const { clients, message, campaignName } = validatedData;
 
     console.log('Send messages request:', { 
       user: user.id, 
