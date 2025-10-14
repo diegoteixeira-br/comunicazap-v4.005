@@ -126,7 +126,7 @@ serve(async (req) => {
       .upsert({
         user_id: user.id,
         instance_name: instanceName,
-        instance_id: evolutionData.instance?.instanceId || instanceName,
+        instance_id: instanceApiKey || evolutionData.instance?.instanceId || instanceName,
         status: 'pending',
         qr_code: connectData.qrcode?.base64 || connectData.base64,
         qr_code_updated_at: new Date().toISOString(),
