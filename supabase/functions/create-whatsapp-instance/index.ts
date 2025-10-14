@@ -80,6 +80,7 @@ serve(async (req) => {
 
     // Try to capture the per-instance API key (token) from the create response
     let instanceApiKey: string | null = (
+      evolutionData?.hash ||
       evolutionData?.instance?.apikey ||
       evolutionData?.instance?.token ||
       evolutionData?.hash?.apikey ||
@@ -103,6 +104,7 @@ serve(async (req) => {
     // If still missing, try to extract it from the connect response
     if (!instanceApiKey) {
       const candidateFromConnect: string | null = (
+        connectData?.hash ||
         connectData?.instance?.apikey ||
         connectData?.instance?.token ||
         connectData?.hash?.apikey ||
