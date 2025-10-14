@@ -5,9 +5,22 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import { Send, CheckCircle, AlertCircle, ArrowLeft, Info } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Send, CheckCircle, AlertCircle, ArrowLeft, Info, ChevronDown, ChevronUp, Save, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { ClientData } from "./Upload";
+import { 
+  MessageTemplate, 
+  getAllTemplates, 
+  saveCustomTemplate, 
+  deleteCustomTemplate,
+  getCategoryIcon,
+  getCategoryLabel
+} from "@/data/messageTemplates";
 
 const WEBHOOK_URL = "https://webhook.belaformaonline.com/webhook/disparo";
 
@@ -16,6 +29,14 @@ const Results = () => {
   const [clients, setClients] = useState<ClientData[]>([]);
   const [sendingStatus, setSendingStatus] = useState<{ [key: number]: "idle" | "sending" | "success" | "error" }>({});
   const [customMessage, setCustomMessage] = useState("");
+  
+  // Template states
+  const [showTemplates, setShowTemplates] = useState(false);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
+  const [templates, setTemplates] = useState<MessageTemplate[]>([]);
+  const [showSaveDialog, setShowSaveDialog] = useState(false);
+  const [newTemplateName, setNewTemplateName] = useState("");
+  const [newTemplateCategory, setNewTemplateCategory] = useState<MessageTemplate["category"]>("personalizado");
 
   useEffect(() => {
     const storedData = sessionStorage.getItem("clientData");
@@ -36,6 +57,10 @@ const Results = () => {
       navigate("/upload");
     }
   }, [navigate]);
+
+  useEffect(() => {
+    setTemplates(getAllTemplates());
+  }, []);
 
   const replaceVariables = (template: string, client: ClientData): string => {
     return template
@@ -114,6 +139,85 @@ const Results = () => {
     }
   };
 
+  const handleUseTemplate = (template: MessageTemplate) => {
+    setCustomMessage(template.message);
+    setSelectedTemplateId(template.id);
+    toast.success(`Template "${template.title}" carregado!`);
+    setShowTemplates(false);
+  };
+
+  const handleSaveTemplate = () => {
+    if (!newTemplateName.trim()) {
+      toast.error("Digite um nome para o template");
+      return;
+    }
+
+    if (newTemplateName.trim().length < 3) {
+      toast.error("Nome deve ter pelo menos 3 caracteres");
+      return;
+    }
+
+    if (!customMessage.trim()) {
+      toast.error("A mensagem não pode estar vazia");
+      return;
+    }
+
+    if (customMessage.trim().length < 10) {
+      toast.error("Mensagem deve ter pelo menos 10 caracteres");
+      return;
+    }
+
+    try {
+      const newTemplate: MessageTemplate = {
+        id: `custom-${Date.now()}`,
+        title: newTemplateName.trim(),
+        message: customMessage,
+        category: newTemplateCategory,
+        isCustom: true,
+        createdAt: new Date().toISOString(),
+      };
+
+      saveCustomTemplate(newTemplate);
+      setTemplates(getAllTemplates());
+      setShowSaveDialog(false);
+      setNewTemplateName("");
+      setNewTemplateCategory("personalizado");
+
+      toast.success("✅ Template salvo com sucesso!");
+    } catch (error) {
+      if (error instanceof Error && error.message.includes("Limite")) {
+        toast.error("Limite atingido", {
+          description: "Você atingiu o limite de 50 templates personalizados"
+        });
+      } else {
+        toast.error("Erro ao salvar template");
+      }
+    }
+  };
+
+  const handleDeleteTemplate = (templateId: string, templateTitle: string) => {
+    if (confirm(`Tem certeza que deseja excluir o template "${templateTitle}"?`)) {
+      try {
+        deleteCustomTemplate(templateId);
+        setTemplates(getAllTemplates());
+        toast.success("Template excluído");
+      } catch (error) {
+        toast.error("Erro ao excluir template");
+      }
+    }
+  };
+
+  const handleClearMessage = () => {
+    setCustomMessage("");
+    setSelectedTemplateId(null);
+    toast.info("Mensagem limpa");
+  };
+
+  const getFilteredTemplates = (category: string) => {
+    if (category === "todos") return templates;
+    return templates.filter(t => t.category === category);
+  };
+
   const successCount = Object.values(sendingStatus).filter(s => s === "success").length;
   const errorCount = Object.values(sendingStatus).filter(s => s === "error").length;
 
@@ -135,6 +239,90 @@ const Results = () => {
           </p>
         </div>
 
+        {/* Templates Section */}
+        <Card className="mb-6 shadow-elevated">
+          <CardHeader className="cursor-pointer" onClick={() => setShowTemplates(!showTemplates)}>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  📚 Meus Templates
+                </CardTitle>
+                <CardDescription>
+                  Use templates prontos ou crie seus próprios
+                </CardDescription>
+              </div>
+              <Button variant="ghost" size="icon">
+                {showTemplates ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+              </Button>
+            </div>
+          </CardHeader>
+          
+          {showTemplates && (
+            <CardContent>
+              <Tabs defaultValue="todos" className="w-full">
+                <TabsList className="w-full justify-start flex-wrap h-auto">
+                  <TabsTrigger value="todos">Todos ({templates.length})</TabsTrigger>
+                  <TabsTrigger value="opt-in">✅ Opt-in</TabsTrigger>
+                  <TabsTrigger value="saudacao">👋 Saudação</TabsTrigger>
+                  <TabsTrigger value="lembrete">📅 Lembrete</TabsTrigger>
+                  <TabsTrigger value="promocao">🎁 Promoção</TabsTrigger>
+                  <TabsTrigger value="agradecimento">💚 Agradecimento</TabsTrigger>
+                  <TabsTrigger value="personalizado">✏️ Personalizados</TabsTrigger>
+                </TabsList>
+
+                {["todos", "opt-in", "saudacao", "lembrete", "promocao", "agradecimento", "personalizado"].map(category => (
+                  <TabsContent key={category} value={category} className="mt-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {getFilteredTemplates(category).length > 0 ? (
+                        getFilteredTemplates(category).map(template => (
+                          <Card key={template.id} className="hover:shadow-md transition-shadow">
+                            <CardHeader className="pb-3">
+                              <div className="flex items-start justify-between">
+                                <div className="flex items-center gap-2 flex-1">
+                                  <span className="text-2xl">{getCategoryIcon(template.category)}</span>
+                                  <CardTitle className="text-base line-clamp-1">{template.title}</CardTitle>
+                                </div>
+                                {template.isCustom && (
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 flex-shrink-0"
+                                    onClick={() => handleDeleteTemplate(template.id, template.title)}
+                                  >
+                                    <Trash2 className="h-4 w-4 text-destructive" />
+                                  </Button>
+                                )}
+                              </div>
+                            </CardHeader>
+                            <CardContent className="space-y-3">
+                              <p className="text-sm text-muted-foreground line-clamp-3">
+                                {template.message}
+                              </p>
+                              <Button
+                                onClick={() => handleUseTemplate(template)}
+                                className="w-full"
+                                variant="secondary"
+                                size="sm"
+                              >
+                                Usar Template
+                              </Button>
+                            </CardContent>
+                          </Card>
+                        ))
+                      ) : (
+                        <div className="col-span-full text-center py-8 text-muted-foreground">
+                          Nenhum template nesta categoria
+                        </div>
+                      )}
+                    </div>
+                  </TabsContent>
+                ))}
+              </Tabs>
+            </CardContent>
+          )}
+        </Card>
+
+        {/* Message Editor Section */}
         <Card className="mb-6 shadow-elevated">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -160,6 +348,38 @@ const Results = () => {
               </div>
             </div>
 
+            <div className="flex gap-2">
+              <Button
+                onClick={() => setShowSaveDialog(true)}
+                variant="outline"
+                disabled={!customMessage.trim()}
+              >
+                <Save className="h-4 w-4 mr-2" />
+                Salvar como Template
+              </Button>
+              <Button
+                onClick={handleClearMessage}
+                variant="outline"
+                disabled={!customMessage.trim()}
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Limpar
+              </Button>
+            </div>
+
+            {customMessage && clients.length > 0 && (
+              <Card className="bg-muted/30 border-primary/20">
+                <CardContent className="pt-4">
+                  <p className="text-xs font-medium text-muted-foreground mb-2">📋 Preview com primeiro cliente:</p>
+                  <p className="text-sm">
+                    {customMessage
+                      .replace(/{nome}/g, clients[0]["Nome do Cliente"])
+                      .replace(/{telefone}/g, clients[0]["Telefone do Cliente"])}
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+
             <Card className="bg-muted/50 border-primary/20">
               <CardContent className="pt-4">
                 <div className="flex items-start gap-2">
@@ -167,8 +387,8 @@ const Results = () => {
                   <div className="space-y-2 flex-1">
                     <p className="text-sm font-medium">Códigos disponíveis:</p>
                     <div className="flex flex-wrap gap-2">
-                      <Badge 
-                        variant="secondary" 
+                      <Badge
+                        variant="secondary"
                         className="cursor-pointer hover:bg-secondary/80"
                         onClick={() => setCustomMessage(prev => prev + "{nome}")}
                       >
@@ -196,6 +416,64 @@ const Results = () => {
             </div>
           </CardContent>
         </Card>
+
+        {/* Save Template Dialog */}
+        <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Salvar Template</DialogTitle>
+              <DialogDescription>
+                Crie um template para reutilizar esta mensagem no futuro
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="template-name">Nome do Template</Label>
+                <Input
+                  id="template-name"
+                  placeholder="Ex: Minha Mensagem de Opt-in"
+                  value={newTemplateName}
+                  onChange={(e) => setNewTemplateName(e.target.value.slice(0, 50))}
+                  maxLength={50}
+                />
+                <p className="text-xs text-muted-foreground">
+                  {newTemplateName.length}/50 caracteres
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="template-category">Categoria</Label>
+                <Select value={newTemplateCategory} onValueChange={(value) => setNewTemplateCategory(value as MessageTemplate["category"])}>
+                  <SelectTrigger id="template-category">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="opt-in">✅ Opt-in</SelectItem>
+                    <SelectItem value="saudacao">👋 Saudação</SelectItem>
+                    <SelectItem value="lembrete">📅 Lembrete</SelectItem>
+                    <SelectItem value="promocao">🎁 Promoção</SelectItem>
+                    <SelectItem value="agradecimento">💚 Agradecimento</SelectItem>
+                    <SelectItem value="personalizado">✏️ Personalizado</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Preview da mensagem:</Label>
+                <div className="p-3 rounded-md bg-muted text-sm max-h-32 overflow-y-auto">
+                  {customMessage || "Nenhuma mensagem para visualizar"}
+                </div>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowSaveDialog(false)}>
+                Cancelar
+              </Button>
+              <Button onClick={handleSaveTemplate}>
+                <Save className="h-4 w-4 mr-2" />
+                Salvar Template
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {(successCount > 0 || errorCount > 0) && (
           <div className="mb-6 flex gap-4">
