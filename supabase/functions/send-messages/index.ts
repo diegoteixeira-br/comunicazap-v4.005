@@ -97,7 +97,7 @@ serve(async (req) => {
           .select()
           .single();
 
-        await new Promise(resolve => setTimeout(resolve, index * 3000));
+        await new Promise(resolve => setTimeout(resolve, index * 60000));
 
         const response = await fetch(n8nWebhookUrl, {
           method: 'POST',
