@@ -89,7 +89,12 @@ serve(async (req) => {
 
     const n8nWebhookUrl = Deno.env.get('N8N_WEBHOOK_URL') ?? '';
 
-    const sendPromises = clients.map(async (client: any, index: number) => {
+    const results = [];
+
+    // Enviar mensagens sequencialmente com delay de 30 segundos
+    for (let i = 0; i < clients.length; i++) {
+      const client = clients[i];
+      
       try {
         const { data: log } = await supabaseClient
           .from('message_logs')
@@ -102,8 +107,6 @@ serve(async (req) => {
           })
           .select()
           .single();
-
-        await new Promise(resolve => setTimeout(resolve, index * 40000));
 
         const payload: any = {
           instanceName: instance.instance_name,
@@ -142,7 +145,8 @@ serve(async (req) => {
             campaign_id: campaign.id 
           });
 
-          return { success: true, client: client["Nome do Cliente"] };
+          results.push({ success: true, client: client["Nome do Cliente"] });
+          console.log(`Message sent successfully to ${client["Nome do Cliente"]} (${i + 1}/${clients.length})`);
         } else {
           throw new Error(`HTTP ${response.status}`);
         }
@@ -163,11 +167,14 @@ serve(async (req) => {
           campaign_id: campaign.id 
         });
 
-        return { success: false, client: client["Nome do Cliente"], error: error.message };
+        results.push({ success: false, client: client["Nome do Cliente"], error: error.message });
       }
-    });
 
-    const results = await Promise.all(sendPromises);
+      // Aguardar 30 segundos antes do próximo envio (exceto no último)
+      if (i < clients.length - 1) {
+        await new Promise(resolve => setTimeout(resolve, 30000));
+      }
+    }
 
     await supabaseClient
       .from('message_campaigns')
