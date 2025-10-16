@@ -1,9 +1,12 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { FileSpreadsheet, MessageSquare, ArrowLeft } from "lucide-react";
+import { FileSpreadsheet, MessageSquare, ArrowLeft, Crown } from "lucide-react";
 import { ImportContactsModal } from "@/components/ImportContactsModal";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 
 interface ClientData {
   "Nome do Cliente": string;
@@ -17,7 +20,89 @@ interface Contact {
 
 const SelectImportMethod = () => {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [showImportModal, setShowImportModal] = useState(false);
+  const [hasActiveSubscription, setHasActiveSubscription] = useState(false);
+  const [checkingSubscription, setCheckingSubscription] = useState(true);
+  const [showPaymentDialog, setShowPaymentDialog] = useState(false);
+  const [creatingCheckout, setCreatingCheckout] = useState(false);
+
+  useEffect(() => {
+    checkSubscription();
+  }, []);
+
+  const checkSubscription = async () => {
+    try {
+      setCheckingSubscription(true);
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        setHasActiveSubscription(false);
+        return;
+      }
+
+      const { data, error } = await supabase.functions.invoke('check-subscription', {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (error) throw error;
+      
+      setHasActiveSubscription(data.subscribed || false);
+    } catch (error) {
+      console.error('Error checking subscription:', error);
+      setHasActiveSubscription(false);
+    } finally {
+      setCheckingSubscription(false);
+    }
+  };
+
+  const handleCreateCheckout = async () => {
+    try {
+      setCreatingCheckout(true);
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        toast({
+          title: "Erro",
+          description: "Você precisa estar logado para assinar.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const { data, error } = await supabase.functions.invoke('create-checkout', {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (error) throw error;
+      
+      if (data.url) {
+        window.open(data.url, '_blank');
+        setShowPaymentDialog(false);
+      }
+    } catch (error) {
+      console.error('Error creating checkout:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível criar a sessão de pagamento.",
+        variant: "destructive",
+      });
+    } finally {
+      setCreatingCheckout(false);
+    }
+  };
+
+  const handleWhatsAppImportClick = () => {
+    if (!hasActiveSubscription) {
+      setShowPaymentDialog(true);
+    } else {
+      setShowImportModal(true);
+    }
+  };
 
   const handleImportContacts = (contacts: Contact[]) => {
     // Converte Contact[] para ClientData[]
@@ -87,16 +172,23 @@ const SelectImportMethod = () => {
 
           {/* Importar do WhatsApp */}
           <Card 
-            className="cursor-pointer hover:shadow-xl transition-all hover:scale-105 border-2 hover:border-primary/50"
-            onClick={() => setShowImportModal(true)}
+            className="cursor-pointer hover:shadow-xl transition-all hover:scale-105 border-2 hover:border-primary/50 relative"
+            onClick={handleWhatsAppImportClick}
           >
+            {!hasActiveSubscription && (
+              <div className="absolute top-4 right-4">
+                <Crown className="h-6 w-6 text-yellow-500" />
+              </div>
+            )}
             <CardHeader className="text-center pb-4">
               <div className="mx-auto mb-4 w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
                 <MessageSquare className="h-8 w-8 text-primary" />
               </div>
               <CardTitle className="text-2xl">Importar do WhatsApp</CardTitle>
               <CardDescription className="text-base">
-                Busque contatos diretamente da sua conta conectada
+                {hasActiveSubscription 
+                  ? "Busque contatos diretamente da sua conta conectada"
+                  : "Assine o plano premium para desbloquear"}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -114,8 +206,16 @@ const SelectImportMethod = () => {
                   <span>Pesquisa e filtro de contatos</span>
                 </li>
               </ul>
-              <Button className="w-full mt-6" variant="outline">
-                Buscar Contatos
+              <Button 
+                className="w-full mt-6" 
+                variant={hasActiveSubscription ? "outline" : "default"}
+                disabled={checkingSubscription}
+              >
+                {checkingSubscription 
+                  ? "Verificando..." 
+                  : hasActiveSubscription 
+                    ? "Buscar Contatos" 
+                    : "Assinar - R$ 59,90/mês"}
               </Button>
             </CardContent>
           </Card>
@@ -127,6 +227,55 @@ const SelectImportMethod = () => {
           onOpenChange={setShowImportModal}
           onImport={handleImportContacts}
         />
+
+        {/* Dialog de Pagamento */}
+        <Dialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Crown className="h-6 w-6 text-yellow-500" />
+                Plano Premium
+              </DialogTitle>
+              <DialogDescription>
+                Desbloqueie a importação de contatos do WhatsApp
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="rounded-lg bg-secondary/20 p-4">
+                <div className="text-3xl font-bold text-primary mb-2">R$ 59,90/mês</div>
+                <ul className="space-y-2 text-sm">
+                  <li className="flex items-start gap-2">
+                    <span className="text-primary mt-0.5">✓</span>
+                    <span>Importação ilimitada de contatos do WhatsApp</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-primary mt-0.5">✓</span>
+                    <span>Sincronização direta com sua conta</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-primary mt-0.5">✓</span>
+                    <span>Pesquisa e filtro avançado de contatos</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-primary mt-0.5">✓</span>
+                    <span>Cancelamento a qualquer momento</span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowPaymentDialog(false)}>
+                Cancelar
+              </Button>
+              <Button 
+                onClick={handleCreateCheckout}
+                disabled={creatingCheckout}
+              >
+                {creatingCheckout ? "Processando..." : "Assinar Agora"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );
