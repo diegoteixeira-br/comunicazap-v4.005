@@ -37,17 +37,27 @@ serve(async (req) => {
       throw new Error('WhatsApp instance not found');
     }
 
-    // Verificar se a mensagem contém palavras de opt-out
-    const optOutKeywords = ['não', 'nao', 'sair', 'parar', 'cancelar', 'stop', 'remover'];
-    const messageText = message.toLowerCase().trim();
+    // Função para normalizar texto (remover acentos e caracteres especiais)
+    const normalizeText = (text: string) => {
+      return text
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .trim();
+    };
+
+    // Verificar se a mensagem contém palavras de opt-out (sem acentos para comparação)
+    const optOutKeywords = ['nao', 'sair', 'parar', 'cancelar', 'stop', 'remover'];
+    const normalizedMessage = normalizeText(message);
     
     // Usar .includes() para detectar palavras em mensagens mais longas (ex: "❌ NÃO")
-    const isOptOut = optOutKeywords.some(keyword => messageText.includes(keyword));
+    const isOptOut = optOutKeywords.some(keyword => normalizedMessage.includes(keyword));
     
     console.log('Verificando opt-out:', { 
-      messageText, 
+      originalMessage: message,
+      normalizedMessage, 
       isOptOut,
-      matchedKeyword: optOutKeywords.find(k => messageText.includes(k)) 
+      matchedKeyword: optOutKeywords.find(k => normalizedMessage.includes(k)) 
     });
 
     if (isOptOut) {
