@@ -81,15 +81,6 @@ const Index = () => {
             Conecte seu WhatsApp, importe seus contatos diretamente e envie mensagens personalizadas automaticamente. 
             <span className="text-primary font-semibold">Comece com 7 dias de teste grátis!</span>
           </p>
-          <Button
-            size="lg"
-            variant="hero"
-            onClick={() => navigate("/auth")}
-            className="text-lg px-8 py-6 h-auto"
-          >
-            <LogIn className="h-5 w-5 mr-2" />
-            Entrar / Cadastrar
-          </Button>
         </div>
 
         {/* Features Grid */}
@@ -172,11 +163,6 @@ const Index = () => {
                   </p>
                 </div>
               </div>
-            </div>
-            <div className="mt-8 text-center">
-              <Button onClick={() => navigate("/auth")} size="lg">
-                Começar Agora
-              </Button>
             </div>
           </CardContent>
         </Card>
