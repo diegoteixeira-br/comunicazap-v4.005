@@ -32,6 +32,8 @@ const Results = () => {
   const [clients, setClients] = useState<ClientData[]>([]);
   const [sendingStatus, setSendingStatus] = useState<{ [key: string]: "idle" | "sending" | "success" | "error" }>({});
   const [customMessage, setCustomMessage] = useState("");
+  const [messageVariations, setMessageVariations] = useState<string[]>(["", "", ""]);
+  const [activeVariationTab, setActiveVariationTab] = useState(0);
   const [whatsappInstance, setWhatsappInstance] = useState<any>(null);
   const [loadingInstance, setLoadingInstance] = useState(true);
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -410,9 +412,11 @@ const Results = () => {
       return;
     }
 
-    if (!customMessage.trim() && !imageFile) {
+    // Verificar se há pelo menos uma variação ou imagem
+    const filledVariations = messageVariations.filter(v => v.trim());
+    if (filledVariations.length === 0 && !imageFile) {
       toast.error("Adicione conteúdo antes de enviar", {
-        description: "Digite uma mensagem ou adicione uma imagem"
+        description: "Digite pelo menos uma variação de mensagem ou adicione uma imagem"
       });
       return;
     }
@@ -453,10 +457,14 @@ const Results = () => {
 
       console.log("🚀 Enviando em massa:", { total: clientsData.length, campaignName });
 
+      // Enviar variações preenchidas
+      const filledVariations = messageVariations.filter(v => v.trim());
+
       const { data, error } = await supabase.functions.invoke('send-messages', {
         body: {
           clients: clientsData,
-          message: customMessage,
+          messageVariations: filledVariations.length > 0 ? filledVariations : undefined,
+          message: filledVariations.length > 0 ? filledVariations[0] : undefined,
           image: imageBase64,
           campaignName
         }
@@ -497,9 +505,12 @@ const Results = () => {
   };
 
   const handleUseTemplate = (template: MessageTemplate) => {
-    setCustomMessage(template.message);
+    // Carregar na variação ativa
+    const newVariations = [...messageVariations];
+    newVariations[activeVariationTab] = template.message;
+    setMessageVariations(newVariations);
     setSelectedTemplateId(template.id);
-    toast.success(`Template "${template.title}" carregado!`);
+    toast.success(`Template "${template.title}" carregado na Variação ${activeVariationTab + 1}!`);
     setShowTemplates(false);
   };
 
@@ -514,12 +525,13 @@ const Results = () => {
       return;
     }
 
-    if (!customMessage.trim()) {
+    const currentMessage = messageVariations[activeVariationTab];
+    if (!currentMessage.trim()) {
       toast.error("A mensagem não pode estar vazia");
       return;
     }
 
-    if (customMessage.trim().length < 10) {
+    if (currentMessage.trim().length < 10) {
       toast.error("Mensagem deve ter pelo menos 10 caracteres");
       return;
     }
@@ -528,7 +540,7 @@ const Results = () => {
       const newTemplate: MessageTemplate = {
         id: `custom-${Date.now()}`,
         title: newTemplateName.trim(),
-        message: customMessage,
+        message: currentMessage,
         category: newTemplateCategory,
         isCustom: true,
         createdAt: new Date().toISOString(),
@@ -565,9 +577,11 @@ const Results = () => {
   };
 
   const handleClearMessage = () => {
-    setCustomMessage("");
+    const newVariations = [...messageVariations];
+    newVariations[activeVariationTab] = "";
+    setMessageVariations(newVariations);
     setSelectedTemplateId(null);
-    toast.info("Mensagem limpa");
+    toast.info("Variação limpa");
   };
 
   const getFilteredTemplates = (category: string) => {
@@ -886,26 +900,69 @@ const Results = () => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Send className="h-5 w-5" />
-              Mensagem Personalizada
+              Mensagem Personalizada com Variações
             </CardTitle>
             <CardDescription>
-              Digite a mensagem que será enviada para cada cliente. Use os códigos para personalizar.
+              Crie até 3 variações de mensagem para parecer mais humano. O sistema alternará entre elas automaticamente.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div>
-              <Textarea
-                placeholder="Olá {nome}, tudo bem?"
-                value={customMessage}
-                onChange={(e) => setCustomMessage(e.target.value.slice(0, 1000))}
-                className="min-h-[120px] resize-none"
-              />
-              <div className="flex justify-end mt-1">
-                <span className="text-xs text-muted-foreground">
-                  {customMessage.length}/1000
-                </span>
-              </div>
-            </div>
+            {/* Abas de Variações */}
+            <Tabs value={activeVariationTab.toString()} onValueChange={(v) => setActiveVariationTab(Number(v))}>
+              <TabsList className="w-full">
+                <TabsTrigger value="0" className="flex-1">
+                  Variação 1
+                  {messageVariations[0].trim() && " ✓"}
+                </TabsTrigger>
+                <TabsTrigger value="1" className="flex-1">
+                  Variação 2
+                  {messageVariations[1].trim() && " ✓"}
+                </TabsTrigger>
+                <TabsTrigger value="2" className="flex-1">
+                  Variação 3
+                  {messageVariations[2].trim() && " ✓"}
+                </TabsTrigger>
+              </TabsList>
+
+              {[0, 1, 2].map((index) => (
+                <TabsContent key={index} value={index.toString()} className="mt-4">
+                  <div>
+                    <Textarea
+                      placeholder={`Olá {nome}, tudo bem? (Variação ${index + 1})`}
+                      value={messageVariations[index]}
+                      onChange={(e) => {
+                        const newVariations = [...messageVariations];
+                        newVariations[index] = e.target.value.slice(0, 1000);
+                        setMessageVariations(newVariations);
+                      }}
+                      className="min-h-[120px] resize-none"
+                    />
+                    <div className="flex justify-between items-center mt-1">
+                      <span className="text-xs text-muted-foreground">
+                        {index === 0 && "Obrigatória"} {index > 0 && "Opcional"}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {messageVariations[index].length}/1000
+                      </span>
+                    </div>
+                  </div>
+                </TabsContent>
+              ))}
+            </Tabs>
+
+            <Card className="bg-muted/30 border-primary/20">
+              <CardContent className="pt-4">
+                <div className="flex items-start gap-2">
+                  <Info className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
+                  <div className="space-y-1 flex-1">
+                    <p className="text-sm font-medium">💡 Dica Anti-Banimento:</p>
+                    <p className="text-xs text-muted-foreground">
+                      Crie variações diferentes da mesma mensagem. O sistema alternará entre elas (Variação 1 → Cliente 1, Variação 2 → Cliente 2, etc.) para evitar que o WhatsApp detecte spam.
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
 
             {/* Image Upload Section */}
             <div className="space-y-2">
@@ -949,7 +1006,7 @@ const Results = () => {
               <Button
                 onClick={() => setShowSaveDialog(true)}
                 variant="outline"
-                disabled={!customMessage.trim()}
+                disabled={!messageVariations[activeVariationTab].trim()}
               >
                 <Save className="h-4 w-4 mr-2" />
                 Salvar como Template
@@ -957,19 +1014,19 @@ const Results = () => {
               <Button
                 onClick={handleClearMessage}
                 variant="outline"
-                disabled={!customMessage.trim()}
+                disabled={!messageVariations[activeVariationTab].trim()}
               >
                 <Trash2 className="h-4 w-4 mr-2" />
-                Limpar
+                Limpar Variação
               </Button>
             </div>
 
-            {customMessage && clients.length > 0 && (
+            {messageVariations[activeVariationTab] && clients.length > 0 && (
               <Card className="bg-muted/30 border-primary/20">
                 <CardContent className="pt-4">
-                  <p className="text-xs font-medium text-muted-foreground mb-2">📋 Preview com primeiro cliente:</p>
+                  <p className="text-xs font-medium text-muted-foreground mb-2">📋 Preview da Variação {activeVariationTab + 1} com primeiro cliente:</p>
                   <p className="text-sm">
-                    {customMessage
+                    {messageVariations[activeVariationTab]
                       .replace(/{nome}/g, clients[0]["Nome do Cliente"])
                       .replace(/{telefone}/g, clients[0]["Telefone do Cliente"])}
                   </p>

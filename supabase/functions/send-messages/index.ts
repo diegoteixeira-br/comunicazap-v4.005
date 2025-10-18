@@ -35,16 +35,22 @@ serve(async (req) => {
     const requestSchema = z.object({
       clients: z.array(clientSchema).min(1, "At least one client required").max(1000, "Maximum 1000 clients per campaign"),
       message: z.string().trim().max(1000, "Message too long").optional().nullable(),
+      messageVariations: z.array(z.string().trim().max(1000, "Message too long")).optional().nullable(),
       image: z.string().optional().nullable(),
       campaignName: z.string().trim().max(100, "Campaign name too long").optional().nullable()
     });
 
     // Validate input
     const validatedData = requestSchema.parse(await req.json());
-    const { clients, message, image, campaignName } = validatedData;
+    const { clients, message, messageVariations, image, campaignName } = validatedData;
+
+    // Usar variações se fornecidas, senão usar mensagem única
+    const variations = messageVariations && messageVariations.length > 0 
+      ? messageVariations 
+      : (message ? [message] : []);
 
     // Validar que ao menos mensagem ou imagem está presente
-    if (!message?.trim() && !image) {
+    if (variations.length === 0 && !image) {
       throw new Error('Either message or image is required');
     }
 
@@ -75,6 +81,7 @@ serve(async (req) => {
         instance_id: instance.id,
         campaign_name: campaignName || `Campaign ${new Date().toISOString()}`,
         total_contacts: clients.length,
+        message_variations: variations,
         status: 'in_progress'
       })
       .select()
@@ -91,18 +98,48 @@ serve(async (req) => {
 
     const results = [];
 
-    // Enviar mensagens sequencialmente com delay de 30 segundos
+    // Enviar mensagens sequencialmente com delay
     for (let i = 0; i < clients.length; i++) {
       const client = clients[i];
       
       try {
+        // Verificar se o contato está na lista de bloqueio
+        const { data: blockedContact } = await supabaseClient
+          .from('blocked_contacts')
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('phone_number', client["Telefone do Cliente"])
+          .single();
+
+        if (blockedContact) {
+          console.log(`Contact ${client["Nome do Cliente"]} is blocked, skipping`);
+          
+          // Registrar como bloqueado nos logs
+          await supabaseClient
+            .from('message_logs')
+            .insert({
+              campaign_id: campaign.id,
+              client_name: client["Nome do Cliente"],
+              client_phone: client["Telefone do Cliente"],
+              message: '[Bloqueado - Opt-out]',
+              status: 'blocked'
+            });
+
+          continue; // Pular para o próximo contato
+        }
+
+        // Selecionar a variação de mensagem (round-robin)
+        const variationIndex = variations.length > 0 ? i % variations.length : 0;
+        const selectedMessage = variations[variationIndex] || '';
+        const personalizedMessage = selectedMessage.replace('{nome}', client["Nome do Cliente"]);
         const { data: log } = await supabaseClient
           .from('message_logs')
           .insert({
             campaign_id: campaign.id,
             client_name: client["Nome do Cliente"],
             client_phone: client["Telefone do Cliente"],
-            message: message ? message.replace('{nome}', client["Nome do Cliente"]) : (image ? '[Imagem]' : ''),
+            message: personalizedMessage || (image ? '[Imagem]' : ''),
+            message_variation_index: variationIndex,
             status: 'pending'
           })
           .select()
@@ -115,8 +152,8 @@ serve(async (req) => {
         };
 
         // Adicionar texto se existir
-        if (message?.trim()) {
-          payload.text = message.replace('{nome}', client["Nome do Cliente"]);
+        if (personalizedMessage?.trim()) {
+          payload.text = personalizedMessage;
         }
 
         // Adicionar imagem se existir

@@ -14,6 +14,30 @@ export type Database = {
   }
   public: {
     Tables: {
+      blocked_contacts: {
+        Row: {
+          created_at: string
+          id: string
+          phone_number: string
+          reason: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          phone_number: string
+          reason?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          phone_number?: string
+          reason?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       message_campaigns: {
         Row: {
           campaign_name: string | null
@@ -22,6 +46,7 @@ export type Database = {
           failed_count: number | null
           id: string
           instance_id: string
+          message_variations: string[] | null
           sent_count: number | null
           status: string | null
           total_contacts: number | null
@@ -34,6 +59,7 @@ export type Database = {
           failed_count?: number | null
           id?: string
           instance_id: string
+          message_variations?: string[] | null
           sent_count?: number | null
           status?: string | null
           total_contacts?: number | null
@@ -46,6 +72,7 @@ export type Database = {
           failed_count?: number | null
           id?: string
           instance_id?: string
+          message_variations?: string[] | null
           sent_count?: number | null
           status?: string | null
           total_contacts?: number | null
@@ -77,6 +104,7 @@ export type Database = {
           error_message: string | null
           id: string
           message: string
+          message_variation_index: number | null
           sent_at: string | null
           status: string | null
         }
@@ -88,6 +116,7 @@ export type Database = {
           error_message?: string | null
           id?: string
           message: string
+          message_variation_index?: number | null
           sent_at?: string | null
           status?: string | null
         }
@@ -99,6 +128,7 @@ export type Database = {
           error_message?: string | null
           id?: string
           message?: string
+          message_variation_index?: number | null
           sent_at?: string | null
           status?: string | null
         }

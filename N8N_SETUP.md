@@ -9,9 +9,11 @@ O sistema envia o seguinte JSON para o webhook do n8n:
   "instanceName": "user-82af4c91-1760496491812",
   "api_key": "EDA20E00-0647-4F30-B239-0D9B5C7FC193",
   "number": "556599999999",
-  "text": "Olá {nome}, sua mensagem aqui"
+  "text": "Olá João, sua mensagem aqui"
 }
 ```
+
+**IMPORTANTE:** O sistema agora suporta variações de mensagem! Cada contato pode receber uma variação diferente. O campo `text` já vem personalizado com o nome do cliente e a variação selecionada automaticamente pelo sistema (round-robin).
 
 ## Configuração do HTTP Request no n8n
 
@@ -57,6 +59,29 @@ Adicione o seguinte header:
 
 ### 6. Options
 - Body Content Type: **application/json**
+
+## Sistema de Variações de Mensagem
+
+### Como Funciona:
+
+1. O usuário cria até 3 variações diferentes da mesma mensagem no frontend
+2. O sistema alterna automaticamente entre as variações:
+   - Cliente 1 → Variação 1
+   - Cliente 2 → Variação 2
+   - Cliente 3 → Variação 3
+   - Cliente 4 → Variação 1 (volta ao início)
+   - E assim por diante...
+3. O campo `text` já chega no n8n com a variação correta e personalizada
+
+### Por que usar variações?
+
+- **Anti-Banimento:** Evita que o WhatsApp detecte envio da mesma mensagem repetidas vezes
+- **Parece mais humano:** Cada cliente recebe uma mensagem ligeiramente diferente
+- **Automático:** O sistema gerencia tudo, você só configura uma vez no n8n
+
+## Sistema de Bloqueio (Opt-Out)
+
+O sistema agora possui proteção contra banimento através de lista de bloqueio. Veja o arquivo `OPT_OUT_SETUP.md` para configurar o webhook que processa quando clientes pedem para sair.
 
 ## Verificação
 
