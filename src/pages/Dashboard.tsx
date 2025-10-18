@@ -5,7 +5,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { MessageSquare, History, Phone, Power, Loader2, RefreshCw, Unplug, CreditCard, Crown, Clock, Zap, AlertCircle, Send, XCircle } from 'lucide-react';
+import { MessageSquare, History, Phone, Power, Loader2, RefreshCw, Unplug, CreditCard, Crown, Clock, Zap, AlertCircle, Send, XCircle, Eye, EyeOff } from 'lucide-react';
 import { ImportContactsModal } from '@/components/ImportContactsModal';
 import { toast } from '@/hooks/use-toast';
 import {
@@ -42,6 +42,8 @@ const Dashboard = () => {
   const [openingPortal, setOpeningPortal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const [userProfile, setUserProfile] = useState<{ full_name: string | null } | null>(null);
+  const [showEmail, setShowEmail] = useState(true);
+  const [showPhone, setShowPhone] = useState(true);
 
   useEffect(() => {
     if (user) {
@@ -317,6 +319,21 @@ const Dashboard = () => {
     navigate("/results");
   };
 
+  const maskEmail = (email: string) => {
+    if (!email) return '';
+    const [localPart, domain] = email.split('@');
+    if (localPart.length <= 3) {
+      return `${localPart}***@${domain}`;
+    }
+    return `${localPart.substring(0, 3)}***@${domain}`;
+  };
+
+  const maskPhone = (phone: string) => {
+    if (!phone) return '';
+    if (phone.length <= 6) return '***' + phone.slice(-3);
+    return phone.substring(0, 3) + '***' + phone.slice(-4);
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-accent/5 p-4 md:p-8">
       <div className="max-w-7xl mx-auto">
@@ -329,7 +346,17 @@ const Dashboard = () => {
             <p className="text-muted-foreground mt-1">
               Bem-vindo(a), {userProfile?.full_name?.split(' ')[0] || user?.email?.split('@')[0]}
             </p>
-            <p className="text-muted-foreground text-sm">{user?.email}</p>
+            <div className="flex items-center gap-2">
+              <p className="text-muted-foreground text-sm">
+                {showEmail ? user?.email : maskEmail(user?.email || '')}
+              </p>
+              <button
+                onClick={() => setShowEmail(!showEmail)}
+                className="text-muted-foreground hover:text-foreground transition-colors"
+              >
+                {showEmail ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
+              </button>
+            </div>
           </div>
           <Button variant="outline" onClick={handleSignOut} className="gap-2">
             <Power className="h-4 w-4" />
@@ -439,9 +466,22 @@ const Dashboard = () => {
                         <Phone className="h-5 w-5" />
                         Status WhatsApp
                       </CardTitle>
-                      <CardDescription className="mt-1">
-                        {whatsappInstance?.phone_number || 'Nenhum número conectado'}
-                      </CardDescription>
+                      <div className="flex items-center gap-2 mt-1">
+                        <CardDescription>
+                          {whatsappInstance?.phone_number 
+                            ? (showPhone ? whatsappInstance.phone_number : maskPhone(whatsappInstance.phone_number))
+                            : 'Nenhum número conectado'
+                          }
+                        </CardDescription>
+                        {whatsappInstance?.phone_number && (
+                          <button
+                            onClick={() => setShowPhone(!showPhone)}
+                            className="text-muted-foreground hover:text-foreground transition-colors"
+                          >
+                            {showPhone ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
+                          </button>
+                        )}
+                      </div>
                     </div>
                     <div className="flex items-center gap-2">
                       <Button
