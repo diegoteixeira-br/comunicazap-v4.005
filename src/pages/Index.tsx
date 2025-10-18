@@ -201,19 +201,29 @@ const Index = () => {
           </p>
           <div className="max-w-2xl mx-auto">
             <Card className="border-2 border-primary/50 relative shadow-2xl bg-gradient-to-br from-primary/5 to-accent/5">
-              <div className="absolute -top-4 left-1/2 -translate-x-1/2">
+              <div className="absolute -top-4 left-1/2 -translate-x-1/2 flex gap-3">
                 <div className="bg-gradient-to-r from-primary to-accent text-white px-6 py-2 rounded-full text-sm font-bold flex items-center gap-2 shadow-lg">
                   <Clock className="h-4 w-4" />
                   7 DIAS GRÁTIS
                 </div>
+                <div className="bg-gradient-to-r from-green-500 to-green-600 text-white px-6 py-2 rounded-full text-sm font-bold shadow-lg">
+                  30% OFF
+                </div>
               </div>
               <CardHeader className="pb-4 pt-8">
                 <div className="text-center">
-                  <div className="flex items-center justify-center gap-2 mb-3">
-                    <MessageCircle className="h-6 w-6 text-primary" />
-                    <CardTitle className="text-2xl">Importação do WhatsApp</CardTitle>
+                  <div className="flex flex-col items-center gap-1 mb-3">
+                    <div className="flex items-center gap-2">
+                      <MessageCircle className="h-6 w-6 text-primary" />
+                      <CardTitle className="text-2xl">Importação do WhatsApp</CardTitle>
+                    </div>
                   </div>
-                  <div className="text-4xl font-bold text-primary mb-2">R$ 59,90<span className="text-lg text-muted-foreground">/mês</span></div>
+                  <div className="flex items-center justify-center gap-3 mb-2">
+                    <span className="text-2xl text-muted-foreground line-through">De R$ 97,90</span>
+                  </div>
+                  <div className="text-4xl font-bold text-primary mb-2">
+                    Por R$ 59,90<span className="text-lg text-muted-foreground">/mês</span>
+                  </div>
                   <p className="text-sm text-muted-foreground">
                     Cancele quando quiser, sem complicações
                   </p>
