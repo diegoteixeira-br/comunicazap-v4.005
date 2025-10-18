@@ -113,6 +113,11 @@ All colors MUST be HSL.
     @apply border-border;
   }
 
+  html, body, #root {
+    overflow-x: hidden;
+    width: 100%;
+  }
+
   body {
     @apply bg-background text-foreground;
   }
