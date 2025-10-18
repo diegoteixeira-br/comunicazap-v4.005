@@ -38,6 +38,7 @@ const Dashboard = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [disconnecting, setDisconnecting] = useState(false);
   const [subscriptionStatus, setSubscriptionStatus] = useState<SubscriptionStatus | null>(null);
+  const [checkingSubscription, setCheckingSubscription] = useState(true);
   const [openingPortal, setOpeningPortal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
 
@@ -159,6 +160,7 @@ const Dashboard = () => {
   };
 
   const checkSubscription = async () => {
+    setCheckingSubscription(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
       
@@ -178,6 +180,8 @@ const Dashboard = () => {
       setSubscriptionStatus(data);
     } catch (error) {
       console.error('Erro ao verificar assinatura:', error);
+    } finally {
+      setCheckingSubscription(false);
     }
   };
 
@@ -485,7 +489,9 @@ const Dashboard = () => {
 
               {/* Subscription Status */}
               <Card className={`border-2 ${
-                subscriptionStatus?.subscribed 
+                checkingSubscription
+                  ? 'border-border'
+                  : subscriptionStatus?.subscribed 
                   ? 'border-yellow-500/50 bg-gradient-to-br from-yellow-500/5 to-amber-500/5' 
                   : subscriptionStatus?.trial_active 
                   ? 'border-blue-500/50 bg-gradient-to-br from-blue-500/5 to-cyan-500/5'
@@ -493,7 +499,12 @@ const Dashboard = () => {
               }`}>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-lg">
-                    {subscriptionStatus?.subscribed ? (
+                    {checkingSubscription ? (
+                      <>
+                        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                        Verificando Status
+                      </>
+                    ) : subscriptionStatus?.subscribed ? (
                       <>
                         <Crown className="h-5 w-5 text-yellow-500" />
                         Assinatura Ativa
@@ -511,7 +522,9 @@ const Dashboard = () => {
                     )}
                   </CardTitle>
                   <CardDescription>
-                    {subscriptionStatus?.subscribed 
+                    {checkingSubscription
+                      ? 'Carregando informações de assinatura...'
+                      : subscriptionStatus?.subscribed 
                       ? 'Você tem acesso completo à importação do WhatsApp' 
                       : subscriptionStatus?.trial_active
                       ? `Restam ${subscriptionStatus.trial_days_left} dia${subscriptionStatus.trial_days_left !== 1 ? 's' : ''} de teste`
@@ -520,7 +533,9 @@ const Dashboard = () => {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-2">
-                  {subscriptionStatus?.subscribed ? (
+                  {checkingSubscription ? (
+                    <div className="w-full h-10 bg-muted animate-pulse rounded-md" />
+                  ) : subscriptionStatus?.subscribed ? (
                     <Button 
                       variant="outline" 
                       onClick={handleManageSubscription}
