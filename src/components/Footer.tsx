@@ -19,18 +19,15 @@ export const Footer = () => {
           <div>
             <h3 className="text-lg font-semibold mb-4">Plataforma</h3>
             <nav className="flex flex-col space-y-2">
-              <Link to="/" className="text-sm text-muted-foreground hover:text-primary transition-colors">
+              <a href="/#" className="text-sm text-muted-foreground hover:text-primary transition-colors">
                 Início
-              </Link>
-              <Link to="/#features" className="text-sm text-muted-foreground hover:text-primary transition-colors">
+              </a>
+              <a href="/#how-it-works" className="text-sm text-muted-foreground hover:text-primary transition-colors">
                 Funcionalidades
-              </Link>
-              <Link to="/#pricing" className="text-sm text-muted-foreground hover:text-primary transition-colors">
+              </a>
+              <a href="/#pricing" className="text-sm text-muted-foreground hover:text-primary transition-colors">
                 Preços
-              </Link>
-              <Link to="/#contact" className="text-sm text-muted-foreground hover:text-primary transition-colors">
-                Contato
-              </Link>
+              </a>
             </nav>
           </div>
 

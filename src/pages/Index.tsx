@@ -168,7 +168,7 @@ const Index = () => {
         </div>
 
         {/* How it Works */}
-        <Card className="shadow-elevated mb-16">
+        <Card id="how-it-works" className="shadow-elevated mb-16">
           <CardContent className="pt-8">
             <h2 className="text-2xl font-bold mb-6 text-center">Como Funciona</h2>
             <div className="space-y-4">
@@ -213,7 +213,7 @@ const Index = () => {
         </Card>
 
         {/* Pricing Section */}
-        <div className="mb-16">
+        <div id="pricing" className="mb-16">
           <h2 className="text-3xl font-bold text-center mb-4">Plano Único e Completo</h2>
           <p className="text-center text-muted-foreground mb-4 max-w-2xl mx-auto">
             Importação profissional de contatos do WhatsApp com{" "}
