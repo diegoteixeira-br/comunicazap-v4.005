@@ -202,7 +202,7 @@ export const ImportContactsModal = ({ open, onOpenChange, onImport }: ImportCont
             </div>
 
             {/* Lista de Contatos */}
-            <ScrollArea className="h-[300px] border rounded-lg">
+            <ScrollArea className="h-[260px] border rounded-lg">
               <div className="p-2">
                 {filteredContacts.length === 0 ? (
                   <div className="text-center py-8 text-muted-foreground">
