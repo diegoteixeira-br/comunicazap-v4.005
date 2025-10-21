@@ -36,7 +36,7 @@ export const Footer = () => {
             <h3 className="text-lg font-semibold mb-4">Informações</h3>
             <div className="space-y-2 text-sm text-muted-foreground">
               <p>
-                <strong>Razão Social:</strong> 63.266.334 DIEGO TEIXEIRA DA SILVA
+                <strong>Razão Social:</strong> DT Soluções Digital - MEI
               </p>
               <p>
                 <strong>CNPJ:</strong> 63.266.334/0001-21
