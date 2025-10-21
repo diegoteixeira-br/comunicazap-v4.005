@@ -849,10 +849,10 @@ const Results = () => {
                 <div className="border-l-4 border-primary pl-4">
                   <h4 className="font-semibold text-lg mb-2">5. Respeite o Delay (Seja Humano)</h4>
                   <p className="text-sm text-muted-foreground mb-2">
-                    Nosso sistema envia as mensagens com um intervalo de segurança. Não tente apressar o processo.
+                    Nosso sistema envia as mensagens com um intervalo de 1 segundo entre cada contato. Não tente apressar o processo.
                   </p>
                   <p className="text-sm">
-                    Nenhum humano consegue enviar 100 mensagens em 1 minuto. O delay é seu amigo e protege seu número.
+                    O delay de 1 segundo garante envios mais rápidos mantendo a segurança da sua conta.
                   </p>
                 </div>
               </div>
