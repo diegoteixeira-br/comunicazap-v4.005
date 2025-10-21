@@ -2,10 +2,8 @@ import { Link } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Footer } from "@/components/Footer";
-
 const PrivacyPolicy = () => {
-  return (
-    <div className="min-h-screen flex flex-col">
+  return <div className="min-h-screen flex flex-col">
       <div className="container mx-auto px-4 py-8 flex-1">
         <Link to="/">
           <Button variant="ghost" className="mb-6">
@@ -163,8 +161,8 @@ const PrivacyPolicy = () => {
               você pode entrar em contato com nosso Encarregado de Dados:
             </p>
             <ul>
-              <li>E-mail: dpo@dtsolucoesdigital.com.br</li>
-              <li>E-mail alternativo: contato@dtsolucoesdigital.com.br</li>
+              <li>E-mail: contato@dtsolucoesdigital.com.br</li>
+              
             </ul>
           </section>
 
@@ -175,15 +173,13 @@ const PrivacyPolicy = () => {
             </p>
             <ul>
               <li>E-mail: contato@dtsolucoesdigital.com.br</li>
-              <li>Telefone: [Telefone de Suporte]</li>
-              <li>Endereço: [Endereço Comercial Completo]</li>
+              
+              
             </ul>
           </section>
         </article>
       </div>
       <Footer />
-    </div>
-  );
+    </div>;
 };
-
 export default PrivacyPolicy;
