@@ -211,16 +211,14 @@ serve(async (req) => {
           number: client["Telefone do Cliente"],
         };
 
-        // Determine if we're sending media or just text
-        if (image) {
-          // Extract base64 data without prefix
-          const base64Data = image.includes(',') ? image.split(',')[1] : image;
-          
-          payload.mediaType = "image";
-          payload.media = base64Data;
-          payload.caption = personalizedMessage || "";
-        } else if (personalizedMessage?.trim()) {
+        // Adicionar texto se existir
+        if (personalizedMessage?.trim()) {
           payload.text = personalizedMessage;
+        }
+
+        // Adicionar imagem se existir
+        if (image) {
+          payload.image = image;
         }
 
         const response = await fetch(n8nWebhookUrl, {
