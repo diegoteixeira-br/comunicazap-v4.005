@@ -48,6 +48,8 @@ serve(async (req) => {
 
     const origin = req.headers.get("origin") || "https://pxzvpnshhulrsjbeqqhn.supabase.co";
     
+    console.log("[CREATE-CHECKOUT] Creating checkout session with price:", "price_1SKNeaKDiUuJ0wIsTdnvOUPV");
+    
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       customer_email: customerId ? undefined : user.email,
@@ -63,6 +65,7 @@ serve(async (req) => {
       metadata: {
         user_id: user.id,
       },
+      allow_promotion_codes: true,
     });
 
     console.log("[CREATE-CHECKOUT] Checkout session created:", session.id);
