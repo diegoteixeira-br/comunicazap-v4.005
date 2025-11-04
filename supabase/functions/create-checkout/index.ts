@@ -48,14 +48,14 @@ serve(async (req) => {
 
     const origin = req.headers.get("origin") || "https://pxzvpnshhulrsjbeqqhn.supabase.co";
     
-    console.log("[CREATE-CHECKOUT] Creating checkout session with price:", "price_1SKNeaKDiUuJ0wIsTdnvOUPV");
+    console.log("[CREATE-CHECKOUT] Creating checkout session with price:", "price_1SPq4WPFVcRfSdEaLuI2RCyA");
     
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       customer_email: customerId ? undefined : user.email,
       line_items: [
         {
-          price: "price_1SKNeaKDiUuJ0wIsTdnvOUPV",
+          price: "price_1SPq4WPFVcRfSdEaLuI2RCyA",
           quantity: 1,
         },
       ],
