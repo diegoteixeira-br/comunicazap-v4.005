@@ -72,24 +72,35 @@ const Upload = () => {
       return;
     }
 
-    const invalidClients = clients.filter(
-      client => !client["Nome do Cliente"] || !client["Telefone do Cliente"]
-    );
+    // Filtrar apenas clientes com dados válidos (ignora linhas vazias)
+    const validClients = clients.filter(client => {
+      const name = client["Nome do Cliente"]?.toString().trim();
+      const phone = client["Telefone do Cliente"]?.toString().trim();
+      return name && phone && name.length > 0 && phone.length > 0;
+    });
 
-    if (invalidClients.length > 0) {
-      toast.error("Dados inválidos", {
-        description: "Certifique-se de que todas as linhas possuem 'Nome do Cliente' e 'Telefone do Cliente'"
+    if (validClients.length === 0) {
+      toast.error("Nenhum dado válido encontrado", {
+        description: "Verifique se as colunas estão nomeadas como 'Nome do Cliente' e 'Telefone do Cliente'"
       });
       setIsProcessing(false);
       return;
     }
 
+    // Normalizar os dados (trim)
+    const normalizedClients = validClients.map(client => ({
+      "Nome do Cliente": client["Nome do Cliente"].toString().trim(),
+      "Telefone do Cliente": client["Telefone do Cliente"].toString().trim()
+    }));
+
+    const skippedRows = clients.length - validClients.length;
+    
     toast.success("Planilha processada com sucesso!", {
-      description: `${clients.length} cliente(s) encontrado(s)`
+      description: `${normalizedClients.length} cliente(s) encontrado(s)${skippedRows > 0 ? ` (${skippedRows} linha(s) vazia(s) ignorada(s))` : ''}`
     });
 
     // Store in sessionStorage to pass to results page
-    sessionStorage.setItem("clientData", JSON.stringify(clients));
+    sessionStorage.setItem("clientData", JSON.stringify(normalizedClients));
     navigate("/results");
   };
 
