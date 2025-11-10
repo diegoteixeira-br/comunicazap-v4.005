@@ -58,11 +58,13 @@ const BirthdayCalendar = () => {
   };
 
   const getBirthdaysForDay = (day: Date) => {
+    const dayMonth = day.getMonth() + 1; // 1-12
+    const dayDate = day.getDate();
+    
     return contacts.filter(contact => {
       if (!contact.birthday) return false;
-      const birthday = new Date(contact.birthday);
-      return birthday.getMonth() === day.getMonth() && 
-             birthday.getDate() === day.getDate();
+      const [, month, dayStr] = contact.birthday.split('-');
+      return parseInt(month) === dayMonth && parseInt(dayStr) === dayDate;
     });
   };
 
@@ -81,8 +83,8 @@ const BirthdayCalendar = () => {
 
   const totalBirthdaysThisMonth = contacts.filter(contact => {
     if (!contact.birthday) return false;
-    const birthday = new Date(contact.birthday);
-    return birthday.getMonth() === currentMonth.getMonth();
+    const [, month] = contact.birthday.split('-');
+    return parseInt(month) === currentMonth.getMonth() + 1;
   }).length;
 
   return (
@@ -239,8 +241,8 @@ const BirthdayCalendar = () => {
         {/* Birthday List for Current Month */}
         {!loading && contacts.filter(c => {
           if (!c.birthday) return false;
-          const birthday = new Date(c.birthday);
-          return birthday.getMonth() === currentMonth.getMonth();
+          const [, month] = c.birthday.split('-');
+          return parseInt(month) === currentMonth.getMonth() + 1;
         }).length > 0 && (
           <Card className="mt-6">
             <CardHeader>
@@ -254,13 +256,13 @@ const BirthdayCalendar = () => {
                 {contacts
                   .filter(c => {
                     if (!c.birthday) return false;
-                    const birthday = new Date(c.birthday);
-                    return birthday.getMonth() === currentMonth.getMonth();
+                    const [, month] = c.birthday.split('-');
+                    return parseInt(month) === currentMonth.getMonth() + 1;
                   })
                   .sort((a, b) => {
-                    const dateA = new Date(a.birthday!);
-                    const dateB = new Date(b.birthday!);
-                    return dateA.getDate() - dateB.getDate();
+                    const [, , dayA] = a.birthday!.split('-');
+                    const [, , dayB] = b.birthday!.split('-');
+                    return parseInt(dayA) - parseInt(dayB);
                   })
                   .map((contact) => (
                     <div
@@ -281,7 +283,7 @@ const BirthdayCalendar = () => {
                         </div>
                       </div>
                       <Badge variant="outline" className="text-sm">
-                        {format(new Date(contact.birthday!), "dd/MM")}
+                        {contact.birthday!.split('-').slice(1).reverse().join('/')}
                       </Badge>
                     </div>
                   ))}

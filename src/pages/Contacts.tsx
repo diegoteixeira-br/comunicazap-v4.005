@@ -134,11 +134,13 @@ const Contacts = () => {
 
     if (tagFilter === "birthday_today") {
       const today = new Date();
+      const todayMonth = today.getMonth() + 1; // 1-12
+      const todayDay = today.getDate();
+      
       filtered = filtered.filter(c => {
         if (!c.birthday) return false;
-        const birthday = new Date(c.birthday);
-        return birthday.getMonth() === today.getMonth() && 
-               birthday.getDate() === today.getDate();
+        const [, month, day] = c.birthday.split('-');
+        return parseInt(month) === todayMonth && parseInt(day) === todayDay;
       });
     } else if (tagFilter && tagFilter !== "all") {
       filtered = filtered.filter(c => c.tags?.includes(tagFilter));
@@ -553,7 +555,7 @@ const Contacts = () => {
                           {contact.birthday && (
                             <Badge variant="secondary" className="gap-1">
                               <Cake className="h-3 w-3" />
-                              {format(new Date(contact.birthday), "dd/MM")}
+                              {contact.birthday.split('-').slice(1).reverse().join('/')}
                             </Badge>
                           )}
                           {contact.tags.map((tag, idx) => (
