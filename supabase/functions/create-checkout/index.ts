@@ -48,24 +48,26 @@ serve(async (req) => {
 
     const origin = req.headers.get("origin") || "https://pxzvpnshhulrsjbeqqhn.supabase.co";
     
-    console.log("[CREATE-CHECKOUT] Creating checkout session with price:", "price_1SQpAQKDiUuJ0wIsJjhK1wtr");
+    const priceId = "price_1SQpAQKDiUuJ0wIsJjhK1wtr";
+    console.log("[CREATE-CHECKOUT] Creating checkout session with price:", priceId);
     
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       customer_email: customerId ? undefined : user.email,
       line_items: [
         {
-          price: "price_1SQpAQKDiUuJ0wIsJjhK1wtr",
+          price: priceId,
           quantity: 1,
         },
       ],
       mode: "subscription",
-      success_url: `${origin}/dashboard?success=true`,
-      cancel_url: `${origin}/dashboard?canceled=true`,
+      success_url: `${origin}/?success=true`,
+      cancel_url: `${origin}/?canceled=true`,
       metadata: {
         user_id: user.id,
       },
       allow_promotion_codes: true,
+      billing_address_collection: 'required',
     });
 
     console.log("[CREATE-CHECKOUT] Checkout session created:", session.id);
