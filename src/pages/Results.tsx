@@ -547,15 +547,37 @@ const Results = () => {
         "Telefone do Cliente": client["Telefone do Cliente"]
       }));
 
-      // Converter imagem para base64 se existir
+      // Upload da imagem para Storage ANTES de chamar a edge function
       let imageBase64 = null;
       if (imageFile) {
-        const reader = new FileReader();
-        imageBase64 = await new Promise<string>((resolve, reject) => {
-          reader.onloadend = () => resolve(reader.result as string);
-          reader.onerror = reject;
-          reader.readAsDataURL(imageFile);
-        });
+        try {
+          toast.info("Fazendo upload da imagem...");
+          
+          const fileName = `${user?.id}/${Date.now()}-${imageFile.name}`;
+          
+          const { error: uploadError } = await supabase.storage
+            .from('campaign-media')
+            .upload(fileName, imageFile, {
+              contentType: imageFile.type,
+              upsert: false
+            });
+
+          if (uploadError) {
+            console.error("Erro no upload:", uploadError);
+            throw new Error("Falha ao fazer upload da imagem");
+          }
+
+          // Converter para base64 para a edge function
+          const reader = new FileReader();
+          imageBase64 = await new Promise<string>((resolve, reject) => {
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.onerror = reject;
+            reader.readAsDataURL(imageFile);
+          });
+          
+        } catch (uploadError: any) {
+          throw new Error(`Erro no upload: ${uploadError.message}`);
+        }
       }
 
       console.log("🚀 Enviando em massa:", { total: clientsData.length, campaignName });
@@ -588,8 +610,18 @@ const Results = () => {
     } catch (error: any) {
       console.error("❌ Erro no envio em massa:", error);
       setIsSending(false);
+      
+      let errorMessage = "Tente novamente";
+      if (error.message?.includes("upload")) {
+        errorMessage = "Erro ao fazer upload da imagem. Tente uma imagem menor.";
+      } else if (error.message?.includes("timeout") || error.message?.includes("Failed to send")) {
+        errorMessage = "Tempo esgotado. Tente novamente ou use uma imagem menor.";
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
       toast.error("Erro ao enviar mensagens", {
-        description: error.message || "Tente novamente"
+        description: errorMessage
       });
     }
   };
