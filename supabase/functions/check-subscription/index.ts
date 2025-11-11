@@ -42,7 +42,7 @@ serve(async (req) => {
         status: 'unauthenticated'
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 200,
+        status: 401,
       });
     }
     logStep("Authorization header found");
@@ -59,7 +59,7 @@ serve(async (req) => {
         status: 'unauthenticated'
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 200,
+        status: 401,
       });
     }
     
@@ -77,7 +77,7 @@ serve(async (req) => {
         status: 'unauthenticated'
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 200,
+        status: 401,
       });
     }
     
@@ -93,7 +93,7 @@ serve(async (req) => {
         status: 'unauthenticated'
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 200,
+        status: 401,
       });
     }
     

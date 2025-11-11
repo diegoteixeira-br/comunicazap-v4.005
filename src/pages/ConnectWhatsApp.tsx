@@ -66,7 +66,6 @@ const ConnectWhatsApp = () => {
       if (error) throw error;
 
       if (data.success) {
-        console.log('QR Code received:', data.qrCode ? 'YES' : 'NO');
         setQrCode(data.qrCode);
         toast({
           title: "QR Code gerado!",

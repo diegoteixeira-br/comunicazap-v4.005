@@ -66,6 +66,8 @@ const Contacts = () => {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [tagFilter, setTagFilter] = useState<string>("all");
   const [selectedContacts, setSelectedContacts] = useState<Set<string>>(new Set());
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 50;
   
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
@@ -89,6 +91,7 @@ const Contacts = () => {
 
   useEffect(() => {
     filterContacts();
+    setCurrentPage(1); // Reset to first page when filters change
   }, [contacts, searchTerm, statusFilter, tagFilter]);
 
   const fetchContacts = async () => {
@@ -112,7 +115,6 @@ const Contacts = () => {
       setAllTags(Array.from(tagsSet).sort());
       
     } catch (error: any) {
-      console.error('Error fetching contacts:', error);
       toast({
         title: "Erro",
         description: "Não foi possível carregar os contatos",
@@ -193,7 +195,6 @@ const Contacts = () => {
       setNewContact({ phone: "", name: "", tags: "", birthday: "" });
       fetchContacts();
     } catch (error: any) {
-      console.error('Error adding contact:', error);
       toast({
         title: "Erro",
         description: error.message.includes('duplicate') 
@@ -230,7 +231,6 @@ const Contacts = () => {
 
       fetchContacts();
     } catch (error: any) {
-      console.error('Error importing contacts:', error);
       toast({
         title: "Erro",
         description: "Não foi possível importar os contatos",
@@ -268,7 +268,6 @@ const Contacts = () => {
       setEditingContact(null);
       fetchContacts();
     } catch (error: any) {
-      console.error('Error updating contact:', error);
       toast({
         title: "Erro",
         description: "Não foi possível atualizar o contato",
@@ -295,7 +294,6 @@ const Contacts = () => {
 
       fetchContacts();
     } catch (error: any) {
-      console.error('Error deleting contact:', error);
       toast({
         title: "Erro",
         description: "Não foi possível excluir o contato",
@@ -334,7 +332,6 @@ const Contacts = () => {
       setSelectedContacts(new Set());
       fetchContacts();
     } catch (error: any) {
-      console.error('Error adding bulk tags:', error);
       toast({
         title: "Erro",
         description: "Não foi possível adicionar as tags",
@@ -363,7 +360,6 @@ const Contacts = () => {
       setSelectedContacts(new Set());
       fetchContacts();
     } catch (error: any) {
-      console.error('Error bulk deleting:', error);
       toast({
         title: "Erro",
         description: "Não foi possível excluir os contatos",
@@ -434,7 +430,6 @@ const Contacts = () => {
         importContactsFromSpreadsheet(rows);
       }
     } catch (error) {
-      console.error("Erro ao processar arquivo:", error);
       toast({
         title: "Erro",
         description: "Verifique se o arquivo está no formato correto",
@@ -485,7 +480,6 @@ const Contacts = () => {
           });
 
         if (error) {
-          console.error('Error inserting contact:', error);
           skipped++;
         } else {
           imported++;
@@ -500,7 +494,6 @@ const Contacts = () => {
       setShowUploadDialog(false);
       fetchContacts();
     } catch (error: any) {
-      console.error('Error importing contacts:', error);
       toast({
         title: "Erro",
         description: "Não foi possível importar os contatos",
@@ -647,7 +640,14 @@ const Contacts = () => {
           <Card>
             <CardHeader>
               <div className="flex justify-between items-center">
-                <CardTitle>{filteredContacts.length} Contatos</CardTitle>
+                <CardTitle>
+                  {filteredContacts.length} Contatos
+                  {filteredContacts.length > itemsPerPage && (
+                    <span className="text-sm text-muted-foreground ml-2">
+                      (Página {currentPage} de {Math.ceil(filteredContacts.length / itemsPerPage)})
+                    </span>
+                  )}
+                </CardTitle>
                 <Checkbox
                   checked={selectedContacts.size === filteredContacts.length && filteredContacts.length > 0}
                   onCheckedChange={toggleAllSelection}
@@ -656,7 +656,9 @@ const Contacts = () => {
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
-                {filteredContacts.map((contact) => (
+                {filteredContacts
+                  .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+                  .map((contact) => (
                   <div
                     key={contact.id}
                     className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent transition-colors"
@@ -729,6 +731,33 @@ const Contacts = () => {
                   </div>
                 ))}
               </div>
+              
+              {/* Pagination Controls */}
+              {filteredContacts.length > itemsPerPage && (
+                <div className="flex items-center justify-between pt-4 mt-4 border-t">
+                  <p className="text-sm text-muted-foreground">
+                    Mostrando {((currentPage - 1) * itemsPerPage) + 1} a {Math.min(currentPage * itemsPerPage, filteredContacts.length)} de {filteredContacts.length} contatos
+                  </p>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                      disabled={currentPage === 1}
+                    >
+                      Anterior
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(p => Math.min(Math.ceil(filteredContacts.length / itemsPerPage), p + 1))}
+                      disabled={currentPage >= Math.ceil(filteredContacts.length / itemsPerPage)}
+                    >
+                      Próxima
+                    </Button>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         )}

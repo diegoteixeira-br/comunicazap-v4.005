@@ -76,7 +76,6 @@ const Dashboard = () => {
             filter: `user_id=eq.${user.id}`
           },
           (payload) => {
-            console.log('WhatsApp instance updated:', payload);
             setWhatsappInstance(payload.new);
           }
         )
@@ -208,7 +207,6 @@ const Dashboard = () => {
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session) {
-        console.log('Sem sessão no dashboard, usando fallback');
         throw new Error('No session');
       }
 
@@ -222,7 +220,6 @@ const Dashboard = () => {
 
       setSubscriptionStatus(data as SubscriptionStatus);
     } catch (error) {
-      console.log('Usando fallback de assinatura no dashboard');
       // Fallback seguro: consultar diretamente o status no banco
       try {
         const { data: row } = await supabase

@@ -232,10 +232,9 @@ const Results = () => {
           // Normalizar números ao carregar (remover @s.whatsapp.net)
           const blockedSet = new Set(data.map(contact => normalizePhone(contact.phone_number)));
           setBlockedContacts(blockedSet);
-          console.log('📵 Contatos bloqueados carregados:', blockedSet.size, Array.from(blockedSet));
         }
       } catch (error) {
-        console.error('Erro ao carregar contatos bloqueados:', error);
+        // Erro silencioso - não afeta o fluxo principal
       } finally {
         setLoadingBlocked(false);
       }
@@ -255,7 +254,6 @@ const Results = () => {
           filter: `user_id=eq.${user.id}`
         },
         (payload) => {
-          console.log('📵 Contato bloqueado atualizado (realtime):', payload);
           fetchBlockedContacts(); // Recarregar lista
         }
       )
@@ -269,8 +267,6 @@ const Results = () => {
   // Polling e Realtime monitoring da campanha ativa
   useEffect(() => {
     if (!activeCampaignId) return;
-
-    console.log('📡 Iniciando monitoramento da campanha:', activeCampaignId);
 
     let pollingInterval: NodeJS.Timeout;
 
@@ -303,13 +299,6 @@ const Results = () => {
           .single();
 
         if (campaign) {
-          console.log('📊 Campanha atualizada (polling):', {
-            sent: campaign.sent_count,
-            failed: campaign.failed_count,
-            total: campaign.total_contacts,
-            status: campaign.status
-          });
-
           setCampaignProgress({
             sent: campaign.sent_count || 0,
             failed: campaign.failed_count || 0,
@@ -330,7 +319,6 @@ const Results = () => {
 
           // Se campanha completada, liberar navegação
           if (campaign.status === 'completed') {
-            console.log('✅ Campanha completada!');
             setIsSending(false);
             clearInterval(pollingInterval);
             
@@ -362,7 +350,6 @@ const Results = () => {
           filter: `campaign_id=eq.${activeCampaignId}`
         },
         (payload) => {
-          console.log('📨 Log atualizado (realtime):', payload);
           fetchCampaignData(); // Refetch para garantir consistência
         }
       )
@@ -379,7 +366,6 @@ const Results = () => {
           filter: `id=eq.${activeCampaignId}`
         },
         (payload) => {
-          console.log('📊 Campanha atualizada (realtime):', payload);
           fetchCampaignData(); // Refetch para garantir consistência
         }
       )
@@ -515,7 +501,6 @@ const Results = () => {
       });
 
       if (error) {
-        console.error('Edge function error:', error);
         throw error;
       }
 
@@ -524,13 +509,11 @@ const Results = () => {
         toast.success("Mensagem enviada!", {
           description: `Enviado para ${client["Nome do Cliente"]}`
         });
-        console.log("✅ Sucesso:", data);
         return true;
       } else {
         throw new Error(data?.error || 'Falha ao enviar');
       }
     } catch (error: any) {
-      console.error("❌ Erro ao enviar:", error);
       setSendingStatus(prev => ({ ...prev, [phone]: "error" }));
       toast.error("Erro ao enviar", {
         description: error.message || `Não foi possível enviar para ${client["Nome do Cliente"]}`
@@ -629,8 +612,7 @@ const Results = () => {
         }
       }
 
-      console.log("🚀 Enviando em massa:", { total: clientsData.length, campaignName });
-
+      
       // Enviar variações preenchidas
       const filledVariations = messageVariations.filter(v => v.trim());
 

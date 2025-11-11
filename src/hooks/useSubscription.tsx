@@ -113,7 +113,6 @@ export const useSubscription = () => {
         const { data: { session } } = await supabase.auth.getSession();
         
         if (!session?.access_token) {
-          console.log('Sem sessão ativa, usando fallback do banco');
           // Ir direto para o fallback se não há sessão
           useFallback();
           return;
@@ -127,7 +126,6 @@ export const useSubscription = () => {
 
         // Se erro 401 (não autorizado), usar fallback silenciosamente
         if (error && error.message?.includes('401')) {
-          console.log('Sessão expirada, usando fallback do banco');
           useFallback();
           return;
         }
@@ -156,7 +154,6 @@ export const useSubscription = () => {
           console.warn('Erro ao salvar cache de assinatura:', e);
         }
       } catch (error) {
-        console.log('Erro ao verificar assinatura, usando fallback');
         useFallback();
       }
     };
