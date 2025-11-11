@@ -45,6 +45,7 @@ const SelectImportMethod = () => {
     // Store selected tags and navigate to results
     sessionStorage.setItem("selectedTags", JSON.stringify(selectedTags));
     sessionStorage.removeItem("clientData"); // Clear any previous client data
+    setShowTagSelector(false); // Close modal first
     navigate("/results");
   };
 
