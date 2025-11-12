@@ -20,7 +20,9 @@ import TermsOfService from "./pages/TermsOfService";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import RefundPolicy from "./pages/RefundPolicy";
 import StripeDiagnostic from "./pages/StripeDiagnostic";
+import Admin from "./pages/Admin";
 import { ProtectedRoute } from "./components/ProtectedRoute";
+import { AdminRoute } from "./components/AdminRoute";
 import { SubscriptionGate } from "./components/SubscriptionGate";
 
 const queryClient = new QueryClient();
@@ -48,6 +50,7 @@ const App = () => (
           <Route path="/privacy" element={<PrivacyPolicy />} />
           <Route path="/refund-policy" element={<RefundPolicy />} />
           <Route path="/stripe-diagnostic" element={<ProtectedRoute><StripeDiagnostic /></ProtectedRoute>} />
+          <Route path="/admin" element={<AdminRoute><Admin /></AdminRoute>} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

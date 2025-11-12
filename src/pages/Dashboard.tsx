@@ -6,7 +6,8 @@ import { useSubscription } from '@/hooks/useSubscription';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { MessageSquare, History, Phone, Power, Loader2, RefreshCw, Unplug, CreditCard, Crown, Clock, Zap, AlertCircle, Send, XCircle, Eye, EyeOff, Users } from 'lucide-react';
+import { MessageSquare, History, Phone, Power, Loader2, RefreshCw, Unplug, CreditCard, Crown, Clock, Zap, AlertCircle, Send, XCircle, Eye, EyeOff, Users, Shield } from 'lucide-react';
+import { useAdmin } from '@/hooks/useAdmin';
 import { ImportContactsModal } from '@/components/ImportContactsModal';
 import { UsageStats } from '@/components/UsageStats';
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -35,6 +36,7 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
   const subscription = useSubscription();
+  const { isAdmin } = useAdmin();
   const [whatsappInstance, setWhatsappInstance] = useState<any>(null);
   const [campaigns, setCampaigns] = useState<any[]>([]);
   const [stats, setStats] = useState({ total: 0, sent: 0, failed: 0 });
@@ -443,6 +445,16 @@ const Dashboard = () => {
           </div>
           <div className="flex items-center gap-2 w-full sm:w-auto">
             <ThemeToggle />
+            {isAdmin && (
+              <Button 
+                variant="outline" 
+                onClick={() => navigate('/admin')} 
+                className="gap-2 flex-1 sm:flex-initial"
+              >
+                <Shield className="h-4 w-4" />
+                <span className="sm:inline">Admin</span>
+              </Button>
+            )}
             <Button variant="outline" onClick={handleSignOut} className="gap-2 flex-1 sm:flex-initial">
               <Power className="h-4 w-4" />
               <span className="sm:inline">Sair</span>
