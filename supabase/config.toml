@@ -14,6 +14,3 @@ verify_jwt = true
 
 [functions.diagnostic-stripe]
 verify_jwt = false
-
-[functions.admin-manage-trials]
-verify_jwt = true

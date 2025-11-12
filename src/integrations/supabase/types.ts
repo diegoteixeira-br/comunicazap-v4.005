@@ -213,27 +213,6 @@ export type Database = {
         }
         Relationships: []
       }
-      user_roles: {
-        Row: {
-          created_at: string | null
-          id: string
-          role: Database["public"]["Enums"]["app_role"]
-          user_id: string
-        }
-        Insert: {
-          created_at?: string | null
-          id?: string
-          role: Database["public"]["Enums"]["app_role"]
-          user_id: string
-        }
-        Update: {
-          created_at?: string | null
-          id?: string
-          role?: Database["public"]["Enums"]["app_role"]
-          user_id?: string
-        }
-        Relationships: []
-      }
       user_subscriptions: {
         Row: {
           created_at: string
@@ -343,13 +322,6 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      has_role: {
-        Args: {
-          _role: Database["public"]["Enums"]["app_role"]
-          _user_id: string
-        }
-        Returns: boolean
-      }
       increment_failed_count: {
         Args: { campaign_id: string }
         Returns: undefined
@@ -358,7 +330,6 @@ export type Database = {
         Args: { campaign_id: string }
         Returns: undefined
       }
-      is_admin: { Args: never; Returns: boolean }
       user_has_access: { Args: { check_user_id: string }; Returns: boolean }
       user_has_active_subscription: {
         Args: { check_user_id: string }
@@ -366,7 +337,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "admin" | "user"
+      [_ in never]: never
     }
     CompositeTypes: {
       [_ in never]: never
@@ -493,8 +464,6 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {
-      app_role: ["admin", "user"],
-    },
+    Enums: {},
   },
 } as const
