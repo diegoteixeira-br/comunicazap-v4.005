@@ -34,19 +34,60 @@ serve(async (req) => {
       .eq('user_id', user.id)
       .maybeSingle();
 
-    if (existingInstance && existingInstance.status === 'connected') {
-      // If API key is missing for a connected instance, warn so the user can refresh it later
-      if (!existingInstance.api_key) {
-        console.warn('Connected instance has no API key saved. Consider refreshing the instance token.');
+    if (existingInstance) {
+      console.log(`Found existing instance: ${existingInstance.instance_name} with status: ${existingInstance.status}`);
+      
+      // Se está conectada, apenas retornar
+      if (existingInstance.status === 'connected') {
+        if (!existingInstance.api_key) {
+          console.warn('Connected instance has no API key saved. Consider refreshing the instance token.');
+        }
+        return new Response(
+          JSON.stringify({ 
+            success: true, 
+            message: 'Instance already connected',
+            instance: existingInstance 
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
       }
-      return new Response(
-        JSON.stringify({ 
-          success: true, 
-          message: 'Instance already connected',
-          instance: existingInstance 
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      
+      // Se está pending/disconnected, deletar a instância antiga da Evolution API
+      const evolutionApiUrl = Deno.env.get('EVOLUTION_API_URL');
+      const evolutionApiKey = Deno.env.get('EVOLUTION_API_KEY');
+      
+      if (evolutionApiUrl && evolutionApiKey) {
+        try {
+          console.log(`Deleting old instance from Evolution API: ${existingInstance.instance_name}`);
+          
+          // Primeiro tenta fazer logout
+          try {
+            await fetch(`${evolutionApiUrl}/instance/logout/${existingInstance.instance_name}`, {
+              method: 'DELETE',
+              headers: { 'apikey': evolutionApiKey }
+            });
+            console.log('Logout attempt completed');
+          } catch (logoutError) {
+            console.warn('Logout error:', logoutError);
+          }
+          
+          // Depois deleta a instância
+          const deleteResponse = await fetch(`${evolutionApiUrl}/instance/delete/${existingInstance.instance_name}`, {
+            method: 'DELETE',
+            headers: { 'apikey': evolutionApiKey }
+          });
+          
+          if (deleteResponse.ok) {
+            console.log('Old instance deleted successfully from Evolution API');
+          } else {
+            const deleteError = await deleteResponse.text();
+            console.warn('Could not delete old instance, but continuing with new creation:', deleteError);
+          }
+        } catch (error) {
+          console.warn('Error deleting old instance:', error);
+          // Continua mesmo se falhar, para não bloquear o usuário
+        }
+      }
     }
 
     const evolutionApiUrl = Deno.env.get('EVOLUTION_API_URL');
