@@ -41,45 +41,53 @@ serve(async (req) => {
     const evolutionApiUrl = Deno.env.get('EVOLUTION_API_URL') ?? '';
     const evolutionApiKey = Deno.env.get('EVOLUTION_API_KEY') ?? '';
 
-    // Try to logout from Evolution API first
-    try {
-      console.log(`Attempting to logout instance: ${instance.instance_name}`);
-      const logoutResponse = await fetch(`${evolutionApiUrl}/instance/logout/${instance.instance_name}`, {
-        method: 'DELETE',
-        headers: {
-          'apikey': evolutionApiKey
+    // Função auxiliar para tentar deletar com retry
+    const deleteFromEvolution = async (instanceName: string, maxRetries = 3): Promise<boolean> => {
+      for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+          console.log(`Attempt ${attempt} to delete instance: ${instanceName}`);
+          
+          // Primeiro logout
+          const logoutResponse = await fetch(`${evolutionApiUrl}/instance/logout/${instanceName}`, {
+            method: 'DELETE',
+            headers: { 'apikey': evolutionApiKey }
+          });
+          console.log(`Logout response: ${logoutResponse.status}`);
+          
+          // Aguardar um pouco antes de deletar
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          
+          // Agora deletar
+          const deleteResponse = await fetch(`${evolutionApiUrl}/instance/delete/${instanceName}`, {
+            method: 'DELETE',
+            headers: { 'apikey': evolutionApiKey }
+          });
+          
+          if (deleteResponse.ok) {
+            console.log('Instance deleted successfully from Evolution API');
+            return true;
+          }
+          
+          const errorText = await deleteResponse.text();
+          console.warn(`Delete attempt ${attempt} failed: ${errorText}`);
+          
+          if (attempt < maxRetries) {
+            await new Promise(resolve => setTimeout(resolve, 2000));
+          }
+        } catch (error) {
+          console.error(`Delete attempt ${attempt} error:`, error);
+          if (attempt < maxRetries) {
+            await new Promise(resolve => setTimeout(resolve, 2000));
+          }
         }
-      });
-
-      if (logoutResponse.ok) {
-        console.log('Instance logged out from Evolution API');
-      } else {
-        const errorText = await logoutResponse.text();
-        console.warn('Failed to logout from Evolution API:', errorText);
       }
-    } catch (error) {
-      console.error('Evolution API logout error:', error);
-    }
+      return false;
+    };
 
-    // Now delete the instance
-    try {
-      console.log(`Attempting to delete instance: ${instance.instance_name}`);
-      const deleteResponse = await fetch(`${evolutionApiUrl}/instance/delete/${instance.instance_name}`, {
-        method: 'DELETE',
-        headers: {
-          'apikey': evolutionApiKey
-        }
-      });
-
-      if (deleteResponse.ok) {
-        const deleteData = await deleteResponse.json();
-        console.log('Instance deleted from Evolution API:', deleteData);
-      } else {
-        const errorText = await deleteResponse.text();
-        console.warn('Failed to delete from Evolution API:', errorText);
-      }
-    } catch (error) {
-      console.error('Evolution API deletion error:', error);
+    // Executar a deleção com retry
+    const deleted = await deleteFromEvolution(instance.instance_name);
+    if (!deleted) {
+      console.warn('Could not delete instance from Evolution API after all retries, but continuing with database cleanup');
     }
 
     // Delete from database
