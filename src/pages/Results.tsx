@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Send, CheckCircle, AlertCircle, ArrowLeft, Info, ChevronDown, ChevronUp, Save, Trash2, Smartphone, ImagePlus, X, AlertTriangle, RefreshCw, Eye, EyeOff, Lock, Users } from "lucide-react";
+import { Send, CheckCircle, AlertCircle, ArrowLeft, Info, ChevronDown, ChevronUp, Save, Trash2, Smartphone, ImagePlus, X, AlertTriangle, RefreshCw, Eye, EyeOff, Lock, Users, Search } from "lucide-react";
 import { AlertDialog, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { ClientData } from "./Upload";
@@ -62,6 +62,7 @@ const Results = () => {
   const [loadingBlocked, setLoadingBlocked] = useState(true);
   const [showWhatsAppPhone, setShowWhatsAppPhone] = useState(true);
   const [generatingVariations, setGeneratingVariations] = useState(false);
+  const [contactSearch, setContactSearch] = useState("");
   
   // Detectar se estamos trabalhando com grupos
   const isWorkingWithGroups = clients.some(c => c["Telefone do Cliente"].includes('@g.us'));
@@ -78,6 +79,16 @@ const Results = () => {
     if (phone.length <= 6) return '***' + phone.slice(-3);
     return phone.substring(0, 3) + '***' + phone.slice(-4);
   };
+
+  // Filtrar contatos pela busca
+  const filteredClients = clients.filter(client => {
+    if (!contactSearch.trim()) return true;
+    const search = contactSearch.toLowerCase();
+    return (
+      client["Nome do Cliente"].toLowerCase().includes(search) ||
+      client["Telefone do Cliente"].includes(search)
+    );
+  });
 
   useEffect(() => {
     if (authLoading) return;
@@ -1069,7 +1080,7 @@ const Results = () => {
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold mb-2">Nova Campanha</h1>
             <div className="flex flex-wrap items-center gap-2 text-sm sm:text-base text-muted-foreground">
-              <span>{clients.length} cliente(s) carregado(s)</span>
+              <span>{clients.length} contato(s) carregado(s)</span>
               {!loadingBlocked && blockedClientsCount > 0 && (
                 <>
                   <span>•</span>
@@ -1554,18 +1565,27 @@ const Results = () => {
             <Card className="shadow-elevated">
               <CardHeader>
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                  <div>
+                  <div className="flex-1">
                     <CardTitle className="text-base sm:text-lg">
-                      {isWorkingWithGroups ? 'Lista de Grupos' : 'Lista de Clientes'}
+                      {isWorkingWithGroups ? 'Lista de Grupos' : 'Lista de Contatos'}
                     </CardTitle>
                     <CardDescription className="text-xs sm:text-sm">
                       {isWorkingWithGroups 
-                        ? `${clients.length} grupo${clients.length !== 1 ? 's' : ''} selecionado${clients.length !== 1 ? 's' : ''}`
+                        ? `${filteredClients.length} grupo${filteredClients.length !== 1 ? 's' : ''} ${contactSearch.trim() ? 'encontrado' : 'selecionado'}${filteredClients.length !== 1 ? 's' : ''}`
                         : blockedClientsCount > 0 
                           ? `Marque para excluir • ${availableClientsCount} disponíveis, ${blockedClientsCount} bloqueados`
                           : "Marque as checkboxes para excluir"
                       }
                     </CardDescription>
+                    <div className="relative mt-3 w-full sm:w-64">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Buscar contato..."
+                        value={contactSearch}
+                        onChange={(e) => setContactSearch(e.target.value)}
+                        className="pl-9 h-9"
+                      />
+                    </div>
                   </div>
                   <div className="flex gap-2 w-full sm:w-auto">
                     {!isWorkingWithGroups && (
@@ -1617,21 +1637,21 @@ const Results = () => {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {clients.map((client, index) => {
+                      {filteredClients.map((client, index) => {
                         const isBlocked = !isWorkingWithGroups && blockedContacts.has(normalizePhone(client["Telefone do Cliente"]));
                         const isGroup = client["Telefone do Cliente"].includes('@g.us');
                         const groupInfo = isGroup ? groupsData.find((g: any) => g.id === client["Telefone do Cliente"]) : null;
                         
                         return (
-                          <TableRow key={index} className={isBlocked ? "opacity-50 bg-destructive/5" : ""}>
+                        <TableRow key={index} className={isBlocked ? "opacity-50 bg-destructive/5" : ""}>
                             <TableCell>
                               <Checkbox
-                                checked={selectedClients.has(index)}
-                                onCheckedChange={() => handleSelectClient(index)}
+                                checked={selectedClients.has(clients.indexOf(client))}
+                                onCheckedChange={() => handleSelectClient(clients.indexOf(client))}
                                 disabled={isBlocked}
                               />
                             </TableCell>
-                            <TableCell className="font-medium text-xs">{index + 1}</TableCell>
+                            <TableCell className="font-medium text-xs">{clients.indexOf(client) + 1}</TableCell>
                             <TableCell className="font-medium text-xs sm:text-sm">
                               <div className="max-w-[150px] sm:max-w-none truncate flex items-center gap-2">
                                 {isGroup && <Users className="h-4 w-4 text-green-500 flex-shrink-0" />}

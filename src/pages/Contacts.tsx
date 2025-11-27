@@ -30,7 +30,8 @@ import {
   Download,
   Cake,
   Upload as UploadIcon,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Send
 } from "lucide-react";
 import { ImportContactsModal } from "@/components/ImportContactsModal";
 import { format, isSameDay } from "date-fns";
@@ -511,6 +512,31 @@ const Contacts = () => {
     }
   };
 
+  const handleCreateCampaign = () => {
+    // Filtrar apenas contatos ativos selecionados
+    const selectedContactsList = contacts
+      .filter(c => selectedContacts.has(c.id) && c.status === 'active')
+      .map(c => ({
+        "Nome do Cliente": c.name || c.phone_number,
+        "Telefone do Cliente": c.phone_number
+      }));
+
+    if (selectedContactsList.length === 0) {
+      toast({
+        title: "Nenhum contato válido",
+        description: "Selecione contatos ativos para criar uma campanha",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Salvar no sessionStorage e navegar para /results
+    sessionStorage.setItem("clientData", JSON.stringify(selectedContactsList));
+    sessionStorage.removeItem("selectedTags");
+    sessionStorage.removeItem("selectedGroups");
+    navigate("/results");
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-secondary/20">
       <div className="container max-w-7xl mx-auto px-4 py-6">
@@ -599,12 +625,20 @@ const Contacts = () => {
               {selectedContacts.size > 0 && (
                 <div className="flex gap-2">
                   <Button 
+                    variant="default" 
+                    size="sm"
+                    onClick={handleCreateCampaign}
+                  >
+                    <Send className="mr-2 h-4 w-4" />
+                    Criar Campanha ({selectedContacts.size})
+                  </Button>
+                  <Button 
                     variant="outline" 
                     size="sm"
                     onClick={() => setShowBulkTagDialog(true)}
                   >
                     <TagIcon className="mr-2 h-4 w-4" />
-                    Adicionar Tags ({selectedContacts.size})
+                    Adicionar Tags
                   </Button>
                   <Button 
                     variant="destructive" 
