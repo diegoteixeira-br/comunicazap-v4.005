@@ -33,17 +33,21 @@ O sistema agora suporta envio de mensagens para grupos do WhatsApp!
 
 O sistema envia o seguinte JSON para o webhook do n8n:
 
-**Apenas Texto:**
+**Apenas Texto (COM SIMULAÇÃO DE DIGITAÇÃO):**
 ```json
 {
   "instanceName": "user-82af4c91-1760496491812",
   "api_key": "EDA20E00-0647-4F30-B239-0D9B5C7FC193",
   "number": "556599999999",
-  "text": "Olá João, sua mensagem aqui"
+  "text": "Olá João, sua mensagem aqui",
+  "options": {
+    "delay": 3500,
+    "presence": "composing"
+  }
 }
 ```
 
-**Com Imagem ou Vídeo (NOVO FORMATO):**
+**Com Imagem ou Vídeo (COM SIMULAÇÃO DE DIGITAÇÃO):**
 ```json
 {
   "instanceName": "user-82af4c91-1760496491812",
@@ -51,12 +55,18 @@ O sistema envia o seguinte JSON para o webhook do n8n:
   "number": "556599999999",
   "text": "Olá João, sua mensagem aqui",
   "mediaUrl": "https://pxzvpnshhulrsjbeqqhn.supabase.co/storage/v1/object/public/campaign-media/...",
-  "mediaType": "image/png"
+  "mediaType": "image/png",
+  "options": {
+    "delay": 3500,
+    "presence": "composing"
+  }
 }
 ```
 
 **IMPORTANTE:** 
 - ✅ **Novo:** Agora o sistema envia a **URL pública** do arquivo em vez de base64!
+- 🤖 **NOVIDADE:** Sistema com **simulação de digitação humana**! O campo `options.delay` simula o tempo de digitação baseado no tamanho da mensagem
+- 👤 **ANTI-BANIMENTO:** O campo `options.presence: "composing"` mostra o indicador "digitando..." para o destinatário antes de enviar
 - O sistema suporta variações de mensagem! O campo `text` já vem personalizado.
 - O sistema suporta imagens e vídeos até 50MB
 - Quando há mídia, o campo `mediaUrl` contém a URL pública do arquivo no Supabase Storage
@@ -93,12 +103,26 @@ http://evolution:8080/message/sendText/{{ $json.body.instanceName }}
 | apikey | `{{ $json.body.api_key }}` |
 
 #### 5. Body (JSON)
+
+**FORMATO ATUALIZADO - Agora com simulação de digitação:**
+
 ```json
 {
   "number": "{{ $json.body.number }}",
-  "text": "{{ $json.body.text }}"
+  "options": {
+    "delay": "{{ $json.body.options.delay }}",
+    "presence": "{{ $json.body.options.presence }}"
+  },
+  "textMessage": {
+    "text": "{{ $json.body.text }}"
+  }
 }
 ```
+
+**O que mudou:**
+- ✅ Adicionado `options.delay` - simula tempo de digitação (calculado automaticamente pelo sistema)
+- ✅ Adicionado `options.presence: "composing"` - mostra "digitando..." para o destinatário
+- ✅ Mensagem agora vai dentro de `textMessage.text` conforme API da Evolution
 
 #### 6. Options
 - Body Content Type: **application/json**
@@ -125,24 +149,32 @@ http://evolution:8080/message/sendMedia/{{ $json.body.instanceName }}
 
 #### 5. Body (JSON)
 
-**NOVO FORMATO - Agora usa URL direta do arquivo:**
+**FORMATO ATUALIZADO - Com simulação de digitação e URL direta:**
 
 ```json
 {
   "number": "{{ $json.body.number }}",
-  "mediatype": "image",
-  "mimetype": "{{ $json.body.mediaType }}",
-  "media": "{{ $json.body.mediaUrl }}",
-  "caption": "{{ $json.body.text }}"
+  "options": {
+    "delay": "{{ $json.body.options.delay }}",
+    "presence": "{{ $json.body.options.presence }}"
+  },
+  "mediaMessage": {
+    "mediatype": "image",
+    "mimetype": "{{ $json.body.mediaType }}",
+    "media": "{{ $json.body.mediaUrl }}",
+    "caption": "{{ $json.body.text }}"
+  }
 }
 ```
 
 **Explicação:**
-- `mediatype`: Pode ser `"image"` ou `"video"` (use `"image"` que funciona para ambos)
-- `mimetype`: O tipo MIME correto do arquivo (ex: `image/png`, `image/jpeg`, `video/mp4`)
-- `media`: Agora recebe diretamente a **URL pública** do arquivo
-- `caption`: O texto da mensagem
-- ✅ **Vantagem:** Sem problemas de tamanho de payload e tipo MIME correto!
+- `options.delay`: Tempo de digitação simulado (calculado pelo sistema)
+- `options.presence`: Mostra "digitando..." antes de enviar
+- `mediaMessage.mediatype`: Pode ser `"image"` ou `"video"` (use `"image"` que funciona para ambos)
+- `mediaMessage.mimetype`: O tipo MIME correto do arquivo (ex: `image/png`, `image/jpeg`, `video/mp4`)
+- `mediaMessage.media`: URL pública do arquivo no Supabase Storage
+- `mediaMessage.caption`: O texto da mensagem
+- ✅ **Vantagem:** Parece envio humano real com simulação de digitação!
 
 #### 6. Options
 - Body Content Type: **application/json**
@@ -151,19 +183,28 @@ http://evolution:8080/message/sendMedia/{{ $json.body.instanceName }}
 
 ### Configuração Alternativa (SE não quiser usar IF)
 
-Se você não quiser usar o nó IF, configure apenas um HTTP Request que sempre usa `/sendMedia/`:
+Se você não quiser usar o nó IF, configure apenas um HTTP Request que tenta enviar com ambos os formatos:
 
 ```json
 {
   "number": "{{ $json.body.number }}",
-  "mediatype": "{{ $json.body.mediaUrl ? 'image' : undefined }}",
-  "mimetype": "{{ $json.body.mediaType }}",
-  "media": "{{ $json.body.mediaUrl ? $json.body.mediaUrl : undefined }}",
-  "caption": "{{ $json.body.text }}"
+  "options": {
+    "delay": "{{ $json.body.options.delay }}",
+    "presence": "{{ $json.body.options.presence }}"
+  },
+  "textMessage": {
+    "text": "{{ $json.body.text }}"
+  },
+  "mediaMessage": {
+    "mediatype": "{{ $json.body.mediaUrl ? 'image' : undefined }}",
+    "mimetype": "{{ $json.body.mediaType }}",
+    "media": "{{ $json.body.mediaUrl }}",
+    "caption": "{{ $json.body.text }}"
+  }
 }
 ```
 
-**ATENÇÃO:** Esta configuração pode não funcionar bem quando não há mídia. Por isso, recomendamos usar o nó IF.
+**ATENÇÃO:** Esta configuração pode não funcionar bem. Por isso, **recomendamos fortemente usar o nó IF**.
 
 ## Sistema de Variações de Mensagem
 
@@ -183,6 +224,50 @@ Se você não quiser usar o nó IF, configure apenas um HTTP Request que sempre 
 - **Anti-Banimento:** Evita que o WhatsApp detecte envio da mesma mensagem repetidas vezes
 - **Parece mais humano:** Cada cliente recebe uma mensagem ligeiramente diferente
 - **Automático:** O sistema gerencia tudo, você só configura uma vez no n8n
+
+---
+
+## 🤖 Sistema de Simulação de Comportamento Humano
+
+### O que o sistema faz automaticamente:
+
+#### 1. **Simulação de Digitação Real**
+- Calcula o tempo de digitação baseado no **tamanho da mensagem** (200 caracteres/min)
+- Mostra o indicador "**digitando...**" para o destinatário antes de enviar
+- Mensagens mais longas levam mais tempo para "digitar"
+
+#### 2. **Delays com Distribuição Gaussiana**
+- Em vez de delays uniformes, usa **distribuição normal** (média 8s, desvio 3s)
+- Parece mais humano: maioria 5-11s, ocasionalmente 2s ou 14s
+- Imita o comportamento irregular de envio manual
+
+#### 3. **Warm-up Gradual**
+- **Primeiras 3 mensagens:** 3x mais lentas (24s entre msgs)
+- **Próximas 3 mensagens:** 2x mais lentas (16s entre msgs)
+- **Próximas 4 mensagens:** 1.5x mais lentas (12s entre msgs)
+- **Após 10ª mensagem:** velocidade normal (8s ± 3s)
+- **Por quê?** Humanos começam devagar e aumentam a velocidade gradualmente
+
+#### 4. **Pausas Aleatórias "Humanas"**
+- **10% de chance:** pausa curta de 30s a 2min (como ir ao banheiro)
+- **5% de chance:** pausa longa de 2 a 5min (como atender telefone)
+- Imita distrações naturais durante envio manual
+
+#### 5. **Lotes Irregulares**
+- Tamanho de lote **variável**: 8 a 15 mensagens (não fixo)
+- Pausa de lote também **variável**: 1.5 a 3 minutos
+- Próximo lote sempre tem tamanho diferente
+- **Por quê?** Humanos não enviam sempre o mesmo número de mensagens antes de pausar
+
+### Resultado:
+
+✅ **WhatsApp não detecta automação** - parece envio 100% manual  
+✅ **Indicador "digitando..."** aparece naturalmente  
+✅ **Padrões irregulares** como humano real  
+✅ **Velocidade aumenta gradualmente** após warm-up  
+✅ **Pausas aleatórias** simulam comportamento natural  
+
+**IMPORTANTE:** Todos esses comportamentos são **automáticos**! Você só precisa configurar o n8n uma vez e o sistema cuida de tudo.
 
 ## Sistema de Bloqueio (Opt-Out)
 

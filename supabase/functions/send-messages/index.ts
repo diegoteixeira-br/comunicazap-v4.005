@@ -7,15 +7,24 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Configurações anti-banimento (mais conservadoras)
-const BATCH_SIZE = 10; // Lotes menores
-const MIN_DELAY_BETWEEN_MESSAGES = 4000; // 4 segundos
-const MAX_DELAY_BETWEEN_MESSAGES = 8000; // 8 segundos
-const MIN_BATCH_PAUSE = 90000; // 90 segundos (1.5 min)
-const MAX_BATCH_PAUSE = 150000; // 150 segundos (2.5 min)
+// Configurações de comportamento humano
+const MIN_DELAY_BETWEEN_MESSAGES = 5000; // Base: 5s
+const MAX_DELAY_BETWEEN_MESSAGES = 11000; // Base: 11s
+const GAUSSIAN_MEAN = 8000; // Média: 8s
+const GAUSSIAN_STD_DEV = 3000; // Desvio padrão: 3s
+const MIN_BATCH_SIZE = 8; // Lote mínimo
+const MAX_BATCH_SIZE = 15; // Lote máximo
+const MIN_BATCH_PAUSE = 90000; // 90s (1.5 min)
+const MAX_BATCH_PAUSE = 180000; // 180s (3 min)
+const WARMUP_MESSAGES = 10; // Primeiras 10 msgs mais lentas
+const LONG_BREAK_CHANCE = 0.10; // 10% chance
+const VERY_LONG_BREAK_CHANCE = 0.05; // 5% chance
 const MAX_CONSECUTIVE_ERRORS = 3;
 const ERROR_RECOVERY_PAUSE = 180000; // 3 minutos
 const REQUEST_TIMEOUT = 30000; // 30 segundos
+const BASE_TYPING_SPEED = 200; // caracteres por minuto
+const MIN_TYPING_DELAY = 2000; // 2s mínimo
+const MAX_TYPING_DELAY = 15000; // 15s máximo
 
 // Funções auxiliares
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -23,6 +32,38 @@ const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 const getRandomDelay = (min: number, max: number) => {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 };
+
+// Distribuição Gaussiana para delays mais naturais
+const gaussianRandom = (mean: number, stdDev: number): number => {
+  const u1 = Math.random();
+  const u2 = Math.random();
+  const z = Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
+  const result = Math.round(mean + z * stdDev);
+  // Garantir que está dentro de limites razoáveis
+  return Math.max(MIN_DELAY_BETWEEN_MESSAGES, Math.min(MAX_DELAY_BETWEEN_MESSAGES, result));
+};
+
+// Calcular delay de digitação baseado no tamanho da mensagem
+const calculateTypingDelay = (message: string): number => {
+  const charCount = message.length;
+  const calculatedDelay = (charCount / BASE_TYPING_SPEED) * 60 * 1000;
+  return Math.min(Math.max(calculatedDelay, MIN_TYPING_DELAY), MAX_TYPING_DELAY);
+};
+
+// Multiplicador de warm-up para primeiras mensagens
+const getWarmupMultiplier = (messageIndex: number): number => {
+  if (messageIndex < 3) return 3.0;   // 3x mais lento
+  if (messageIndex < 6) return 2.0;   // 2x mais lento
+  if (messageIndex < WARMUP_MESSAGES) return 1.5; // 1.5x mais lento
+  return 1.0; // Velocidade normal
+};
+
+// Chance de pausas longas
+const shouldTakeLongBreak = (): boolean => Math.random() < LONG_BREAK_CHANCE;
+const shouldTakeVeryLongBreak = (): boolean => Math.random() < VERY_LONG_BREAK_CHANCE;
+
+// Tamanho de lote variável
+const getNextBatchSize = (): number => getRandomDelay(MIN_BATCH_SIZE, MAX_BATCH_SIZE);
 
 // Verificar status da conexão do WhatsApp
 async function checkConnectionStatus(instanceName: string, apiKey: string): Promise<boolean> {
@@ -316,15 +357,18 @@ serve(async (req) => {
       let consecutiveErrors = 0;
       let successCount = 0;
       let failedCount = 0;
+      let nextBatchPause = getNextBatchSize();
+      let messagesInCurrentBatch = 0;
 
-      console.log(`\n🚀 Iniciando envio de ${clients.length} mensagens...`);
+      console.log(`\n🚀 Iniciando envio de ${clients.length} mensagens com comportamento humano...`);
+      console.log(`📊 Configuração: Warm-up de ${WARMUP_MESSAGES} msgs, lotes de ${MIN_BATCH_SIZE}-${MAX_BATCH_SIZE} msgs`);
 
       // Enviar mensagens sequencialmente com delays e verificações
       for (let i = 0; i < clients.length; i++) {
         const client = clients[i];
         
-        // Verificar conexão a cada lote
-        if (i > 0 && i % BATCH_SIZE === 0) {
+        // Verificar conexão periodicamente
+        if (i > 0 && messagesInCurrentBatch >= nextBatchPause) {
           const isConnected = await checkConnectionStatus(instance.instance_name, instance.api_key);
           if (!isConnected) {
             console.error('❌ WhatsApp desconectado! Pausando campanha...');
@@ -392,10 +436,19 @@ serve(async (req) => {
             .select()
             .single();
 
+          // Calcular delay de digitação baseado no tamanho da mensagem
+          const typingDelay = personalizedMessage?.trim() 
+            ? calculateTypingDelay(personalizedMessage)
+            : MIN_TYPING_DELAY;
+
           const payload: any = {
             instanceName: instance.instance_name,
             api_key: instance.api_key,
             number: client["Telefone do Cliente"],
+            options: {
+              delay: typingDelay,
+              presence: "composing" // Simula "digitando..."
+            }
           };
 
           // Adicionar texto se existir
@@ -410,6 +463,7 @@ serve(async (req) => {
           }
 
           console.log(`\n📤 [${i + 1}/${clients.length}] Enviando para ${client["Nome do Cliente"]}...`);
+          console.log(`⌨️ Simulando digitação: ${typingDelay}ms`);
           
           const sendResult = await sendWithRetry(n8nWebhookUrl, payload);
 
@@ -473,17 +527,44 @@ serve(async (req) => {
           }
         }
 
-        // Delay inteligente entre mensagens
+        // Delay inteligente entre mensagens com distribuição gaussiana
         if (i < clients.length - 1) {
-          const delay = getRandomDelay(MIN_DELAY_BETWEEN_MESSAGES, MAX_DELAY_BETWEEN_MESSAGES);
-          console.log(`⏱️ Aguardando ${delay/1000}s...`);
-          await sleep(delay);
+          // Aplicar multiplicador de warm-up
+          const warmupMultiplier = getWarmupMultiplier(i);
+          const baseDelay = gaussianRandom(GAUSSIAN_MEAN, GAUSSIAN_STD_DEV);
+          const finalDelay = Math.round(baseDelay * warmupMultiplier);
           
-          // Pausa maior a cada lote de mensagens
-          if ((i + 1) % BATCH_SIZE === 0) {
+          if (warmupMultiplier > 1.0) {
+            console.log(`🐢 Warm-up [${i + 1}]: ${finalDelay/1000}s (${warmupMultiplier}x mais lento)`);
+          } else {
+            console.log(`⏱️ Aguardando ${finalDelay/1000}s...`);
+          }
+          
+          await sleep(finalDelay);
+          
+          // Pausas longas aleatórias (simulam distração humana)
+          if (shouldTakeVeryLongBreak()) {
+            const breakTime = getRandomDelay(120000, 300000); // 2-5 min
+            console.log(`\n☕ Pausa longa simulada: ${breakTime/60000} minutos`);
+            await sleep(breakTime);
+          } else if (shouldTakeLongBreak()) {
+            const breakTime = getRandomDelay(30000, 120000); // 30s-2min
+            console.log(`\n🚶 Pausa curta simulada: ${breakTime/1000}s`);
+            await sleep(breakTime);
+          }
+          
+          // Incrementar contador de mensagens no lote atual
+          messagesInCurrentBatch++;
+          
+          // Pausa de lote com tamanho variável
+          if (messagesInCurrentBatch >= nextBatchPause) {
             const batchPause = getRandomDelay(MIN_BATCH_PAUSE, MAX_BATCH_PAUSE);
-            console.log(`\n🔄 Pausa de lote (${i + 1}/${clients.length}): ${batchPause/1000}s`);
+            console.log(`\n🔄 Pausa de lote após ${messagesInCurrentBatch} msgs: ${batchPause/1000}s`);
             await sleep(batchPause);
+            
+            messagesInCurrentBatch = 0;
+            nextBatchPause = getNextBatchSize(); // Próximo lote com tamanho diferente
+            console.log(`📦 Próximo lote: ${nextBatchPause} mensagens`);
           }
         }
       }
