@@ -11,6 +11,19 @@ interface Contact {
   phone: string;
 }
 
+// Função para normalizar números brasileiros
+const normalizePhone = (phone: string): string => {
+  // Remove caracteres não numéricos
+  let normalized = phone.replace(/\D/g, '');
+  
+  // Se não começa com 55 e tem 10-11 dígitos (celular/fixo brasileiro), adiciona 55
+  if (!normalized.startsWith('55') && normalized.length >= 10 && normalized.length <= 11) {
+    normalized = '55' + normalized;
+  }
+  
+  return normalized;
+};
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -135,7 +148,9 @@ serve(async (req) => {
       
       // More flexible validation - accept 8+ digits
       if (phone && phone.length >= 8 && /^\d{8,}$/.test(phone)) {
-        contactsMap.set(phone, { name, phone });
+        // Normalize phone to include country code
+        const normalizedPhone = normalizePhone(phone);
+        contactsMap.set(normalizedPhone, { name, phone: normalizedPhone });
         acceptedContacts++;
       } else {
         rejectedContacts++;
@@ -161,11 +176,14 @@ serve(async (req) => {
       phone = phone.replace(/\D/g, '');
       
       // Only add if not already in map
-      if (phone && phone.length >= 8 && /^\d{8,}$/.test(phone) && !contactsMap.has(phone)) {
-        let name = chat.name || chat.pushName || chat.subject || chat.notifyName || phone;
-        contactsMap.set(phone, { name, phone });
-        acceptedContacts++;
-      } else if (!contactsMap.has(phone)) {
+      if (phone && phone.length >= 8 && /^\d{8,}$/.test(phone)) {
+        const normalizedPhone = normalizePhone(phone);
+        if (!contactsMap.has(normalizedPhone)) {
+          let name = chat.name || chat.pushName || chat.subject || chat.notifyName || phone;
+          contactsMap.set(normalizedPhone, { name, phone: normalizedPhone });
+          acceptedContacts++;
+        }
+      } else {
         rejectedContacts++;
       }
     }

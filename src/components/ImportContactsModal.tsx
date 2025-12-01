@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Label } from "@/components/ui/label";
-import { Loader2, Search, Users, Shuffle } from "lucide-react";
+import { Loader2, Search, Users, Shuffle, Database } from "lucide-react";
 import { supabase } from "@/integrations/supabase/sessionClient";
 import { useToast } from "@/hooks/use-toast";
 
@@ -18,9 +18,11 @@ interface ImportContactsModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onImport: (contacts: Contact[]) => void;
+  showSaveToContacts?: boolean;
+  onSaveToContacts?: (contacts: Contact[]) => void;
 }
 
-export const ImportContactsModal = ({ open, onOpenChange, onImport }: ImportContactsModalProps) => {
+export const ImportContactsModal = ({ open, onOpenChange, onImport, showSaveToContacts, onSaveToContacts }: ImportContactsModalProps) => {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [selectedContacts, setSelectedContacts] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState("");
@@ -121,6 +123,13 @@ export const ImportContactsModal = ({ open, onOpenChange, onImport }: ImportCont
       title: "Contatos importados",
       description: `${selected.length} contatos adicionados à lista`,
     });
+  };
+
+  const handleSaveToContacts = () => {
+    const selected = contacts.filter(c => selectedContacts.has(c.phone));
+    if (onSaveToContacts) {
+      onSaveToContacts(selected);
+    }
   };
 
   return (
@@ -240,13 +249,29 @@ export const ImportContactsModal = ({ open, onOpenChange, onImport }: ImportCont
           <Button variant="outline" onClick={() => onOpenChange(false)} className="w-full sm:w-auto">
             Cancelar
           </Button>
+          
+          {/* Botão para salvar na Gestão de Contatos */}
+          {showSaveToContacts && onSaveToContacts && (
+            <Button 
+              variant="secondary"
+              onClick={handleSaveToContacts}
+              disabled={selectedContacts.size === 0 || loading}
+              className="w-full sm:w-auto text-xs sm:text-sm"
+            >
+              <Database className="h-4 w-4 mr-2" />
+              <span className="hidden sm:inline">Salvar na Gestão ({selectedContacts.size})</span>
+              <span className="sm:hidden">Salvar ({selectedContacts.size})</span>
+            </Button>
+          )}
+          
+          {/* Botão original para campanha */}
           <Button 
             onClick={handleImport}
             disabled={selectedContacts.size === 0 || loading}
             className="w-full sm:w-auto text-xs sm:text-sm"
           >
-            <span className="hidden sm:inline">Carregar {selectedContacts.size} Contatos Selecionados</span>
-            <span className="sm:hidden">Carregar {selectedContacts.size} Contatos</span>
+            <span className="hidden sm:inline">Usar na Campanha ({selectedContacts.size})</span>
+            <span className="sm:hidden">Campanha ({selectedContacts.size})</span>
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -14,6 +14,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
 
 interface ClientData {
   "Nome do Cliente": string;
@@ -34,6 +37,8 @@ interface Group {
 
 const SelectImportMethod = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const { toast } = useToast();
   const [showImportModal, setShowImportModal] = useState(false);
   const [showTagSelector, setShowTagSelector] = useState(false);
   const [showGroupSelector, setShowGroupSelector] = useState(false);
@@ -92,6 +97,58 @@ const SelectImportMethod = () => {
     sessionStorage.removeItem("selectedTags");
     setShowGroupSelector(false);
     navigate("/results");
+  };
+
+  const handleSaveToContacts = async (contacts: Contact[]) => {
+    try {
+      // Buscar contatos existentes para comparar
+      const { data: existingContacts } = await supabase
+        .from('contacts')
+        .select('phone_number')
+        .eq('user_id', user?.id);
+      
+      const existingPhones = new Set(existingContacts?.map(c => c.phone_number) || []);
+      
+      // Separar novos e duplicados
+      const newContacts = contacts.filter(c => !existingPhones.has(c.phone));
+      const duplicates = contacts.length - newContacts.length;
+
+      if (newContacts.length === 0) {
+        toast({
+          title: "Nenhum contato novo",
+          description: `Todos os ${duplicates} contatos selecionados já existem na Gestão`,
+        });
+        setShowImportModal(false);
+        return;
+      }
+
+      // Inserir novos contatos
+      const { error } = await supabase
+        .from('contacts')
+        .insert(newContacts.map(c => ({
+          user_id: user?.id,
+          phone_number: c.phone,
+          name: c.name || null,
+          tags: [],
+          status: 'active'
+        })));
+
+      if (error) throw error;
+
+      toast({
+        title: "Sucesso!",
+        description: `${newContacts.length} contato(s) salvo(s) na Gestão${duplicates > 0 ? `, ${duplicates} já existiam` : ''}`
+      });
+      
+      setShowImportModal(false);
+    } catch (error) {
+      console.error('Error saving contacts:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível salvar os contatos na Gestão",
+        variant: "destructive"
+      });
+    }
   };
 
   return (
@@ -270,6 +327,8 @@ const SelectImportMethod = () => {
           open={showImportModal}
           onOpenChange={setShowImportModal}
           onImport={handleImportContacts}
+          showSaveToContacts={true}
+          onSaveToContacts={handleSaveToContacts}
         />
 
         {/* Modal de Seleção de Tags */}
