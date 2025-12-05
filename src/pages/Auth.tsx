@@ -7,7 +7,6 @@ import { Label } from '@/components/ui/label';
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { Eye, EyeOff, ArrowLeft } from 'lucide-react';
-import { ThemeToggle } from '@/components/ThemeToggle';
 
 const Auth = () => {
   const [searchParams] = useSearchParams();
@@ -160,7 +159,7 @@ const Auth = () => {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-100 to-indigo-100 text-slate-900 p-4">
       <div className="w-full max-w-md">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-center mb-4">
           <Button
             variant="ghost"
             onClick={() => navigate('/')}
@@ -168,7 +167,6 @@ const Auth = () => {
             <ArrowLeft className="mr-2 h-4 w-4" />
             Voltar à Página Inicial
           </Button>
-          <ThemeToggle />
         </div>
         <div className="bg-white rounded-lg shadow-lg p-8">
           {isResetMode ? (
