@@ -177,6 +177,42 @@ serve(async (req) => {
       console.log('Instance API key confirmed for storage:', instanceApiKey.substring(0, 8) + '...');
     }
 
+    // Configurar webhook automaticamente para o receptor de respostas (opt-out)
+    const n8nWebhookUrl = Deno.env.get('N8N_WEBHOOK_URL');
+    let webhookConfigured = false;
+    
+    if (n8nWebhookUrl) {
+      console.log('Configurando webhook automaticamente para:', instanceName);
+      
+      try {
+        const webhookResponse = await fetch(`${evolutionApiUrl}/webhook/set/${instanceName}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': evolutionApiKey
+          },
+          body: JSON.stringify({
+            url: n8nWebhookUrl,
+            webhook_by_events: false,
+            webhook_base64: true,
+            events: ['MESSAGES_UPSERT']
+          })
+        });
+        
+        if (webhookResponse.ok) {
+          console.log('Webhook configurado automaticamente com sucesso!');
+          webhookConfigured = true;
+        } else {
+          const webhookError = await webhookResponse.text();
+          console.warn('Falha ao configurar webhook:', webhookError);
+        }
+      } catch (webhookErr) {
+        console.warn('Erro ao configurar webhook:', webhookErr);
+      }
+    } else {
+      console.warn('N8N_WEBHOOK_URL não configurada - webhook não será configurado automaticamente');
+    }
+
     const { data: instanceData, error: insertError } = await supabaseClient
       .from('whatsapp_instances')
       .upsert({
@@ -186,7 +222,8 @@ serve(async (req) => {
         status: 'pending',
         qr_code: connectData.qrcode?.base64 || connectData.base64,
         qr_code_updated_at: new Date().toISOString(),
-        api_key: instanceApiKey ?? undefined
+        api_key: instanceApiKey ?? undefined,
+        webhook_url: webhookConfigured ? n8nWebhookUrl : null
       }, {
         onConflict: 'user_id'
       })
@@ -204,7 +241,8 @@ serve(async (req) => {
       JSON.stringify({ 
         success: true, 
         instance: instanceData,
-        qrCode: connectData.qrcode?.base64 || connectData.base64
+        qrCode: connectData.qrcode?.base64 || connectData.base64,
+        webhookConfigured
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
