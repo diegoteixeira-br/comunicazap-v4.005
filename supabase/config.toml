@@ -26,3 +26,9 @@ verify_jwt = true
 
 [functions.generate-variations]
 verify_jwt = true
+
+[functions.update-message-status]
+verify_jwt = false
+
+[functions.update-campaign-status]
+verify_jwt = false
