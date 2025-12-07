@@ -157,6 +157,21 @@ serve(async (req) => {
       throw new Error('WhatsApp disconnected. Please reconnect.');
     }
 
+    // ============= RATE LIMITING: Limite diário de campanhas =============
+    const oneDayAgo = new Date(Date.now() - 86400000).toISOString();
+    const { count: dailyCampaignCount, error: countError } = await supabaseClient
+      .from('message_campaigns')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', user.id)
+      .gte('created_at', oneDayAgo);
+
+    if (countError) {
+      console.error('Erro ao verificar limite diário:', countError);
+    } else if ((dailyCampaignCount || 0) >= 20) {
+      throw new Error('Limite diário de 20 campanhas atingido. Tente novamente amanhã.');
+    }
+    console.log(`📊 Campanhas nas últimas 24h: ${dailyCampaignCount || 0}/20`);
+
     // Criar campanha
     const { data: campaign, error: campaignError } = await supabaseClient
       .from('message_campaigns')
@@ -324,7 +339,8 @@ serve(async (req) => {
       contacts: contactsToSend
     };
 
-    console.log(`🔥 Enviando payload para n8n com ${contactsToSend.length} contatos...`);
+    // Log seguro sem expor api_key
+    console.log(`🔥 Enviando payload para n8n: instanceName=${instance.instance_name}, campaign_id=${campaign.id}, contacts=${contactsToSend.length}, hasMedia=${!!mediaUrl}`);
 
     // Fire-and-forget: não esperar resposta
     const sendToN8n = async () => {

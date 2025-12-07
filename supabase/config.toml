@@ -15,9 +15,6 @@ verify_jwt = true
 [functions.customer-portal]
 verify_jwt = true
 
-[functions.diagnostic-stripe]
-verify_jwt = false
-
 [functions.support-chat]
 verify_jwt = true
 
