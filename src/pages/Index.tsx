@@ -486,8 +486,8 @@ const Index = () => {
                 </CardHeader>
                 <CardContent>
                   <p className="text-sm text-muted-foreground">
-                    Nunca esqueça um aniversário! Visualize calendário de aniversários e envie mensagens personalizadas
-                    automaticamente para seus clientes.
+                    Fidelize seus clientes! O sistema avisa quem são os aniversariantes do dia e permite importar todos
+                    para uma lista de envio imediato.
                   </p>
                 </CardContent>
               </Card>
