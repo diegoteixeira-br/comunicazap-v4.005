@@ -1,26 +1,70 @@
 
-## Atualização do Texto do Banner de CPF/CNPJ
 
-### Objetivo
-Melhorar a mensagem do banner para explicar claramente ao usuário o motivo da solicitação do documento.
+## Diagnóstico do Problema
 
-### Alteração
+O cliente **JN Construção e Acabamento** (ti@jncac.com.br) está bloqueado apesar de ter assinatura ativa porque:
 
-**Arquivo:** `src/pages/Dashboard.tsx`
+### Causa Raiz
+O campo `current_period_end` na tabela `user_subscriptions` está **NULL**:
 
-**Texto atual:**
-- Título: "Complete seu cadastro"
-- Descrição: "Informe seu CPF ou CNPJ para continuar usando a plataforma."
+| Campo | Valor | Status |
+|-------|-------|--------|
+| status | `active` | ✅ |
+| stripe_subscription_id | `sub_1SwqoxPFVcRfSdEaMUDDCOTY` | ✅ |
+| current_period_end | `NULL` | ❌ **PROBLEMA** |
+| document (CNPJ) | `58241855000194` | ✅ |
 
-**Novo texto:**
-- Título: "Complete seu cadastro"
-- Descrição: "Para garantir a segurança e evitar a criação de contas duplicadas, precisamos que você informe seu CPF ou CNPJ."
+### Por que isso bloqueia?
 
-### Justificativa
-O novo texto deixa claro para o usuário que:
-1. É uma medida de segurança
-2. O objetivo é evitar contas duplicadas (abuso do trial)
-3. Mantém um tom profissional e transparente
+O hook `useSubscription` verifica:
+```text
+subscribed = status === 'active' 
+           AND current_period_end existe 
+           AND current_period_end > agora
+```
 
-### Detalhes Técnicos
-Alteração simples de uma linha no componente do banner, modificando apenas o texto da tag `<p>` dentro do Card de aviso.
+Como `current_period_end` é NULL, a verificação falha.
+
+---
+
+## Plano de Correção
+
+### Passo 1: Correção Imediata (Desbloquear o Cliente)
+
+Atualizar o registro no banco com o `current_period_end` correto baseado nos dados do Stripe:
+- Próxima fatura: 3 de março de 2026
+- Definir: `current_period_end = '2026-03-03'`
+
+### Passo 2: Corrigir a Sincronização
+
+A edge function `check-subscription` já foi re-deployada. Quando o cliente fizer login novamente, a função irá:
+1. Consultar o Stripe
+2. Encontrar a assinatura ativa
+3. Atualizar automaticamente o `current_period_end`
+
+### Passo 3 (Opcional - Recomendado): Criar Webhook do Stripe
+
+Para garantir que isso não aconteça novamente, implementar um webhook que recebe eventos do Stripe:
+- `checkout.session.completed` → Ativa a assinatura
+- `customer.subscription.updated` → Atualiza período
+- `customer.subscription.deleted` → Cancela assinatura
+
+---
+
+## Detalhes Técnicos
+
+### SQL para correção imediata:
+```text
+UPDATE user_subscriptions 
+SET 
+  current_period_end = '2026-03-03T00:00:00+00:00',
+  current_period_start = '2026-02-03T00:00:00+00:00',
+  updated_at = NOW()
+WHERE user_id = '7b22fedb-1bc6-4d3e-a0cf-97f5974612dd';
+```
+
+### Arquivos envolvidos:
+- `supabase/functions/check-subscription/index.ts` - Já deployada
+- `src/hooks/useSubscription.tsx` - Lógica de verificação (não precisa alterar)
+- Novo arquivo (opcional): `supabase/functions/stripe-webhook/index.ts`
+
